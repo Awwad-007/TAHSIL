@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAHSIL | AI Revenue Recovery Agent</title>
+    <style>
+        :root {
+            --bg-base: #090d16;
+            --bg-surface: #111827;
+            --bg-surface-elevated: #1f2937;
+            --border: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #8b5cf6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            padding: 24px 32px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .brand-badge {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+            padding: 6px 14px;
+            border-radius: 10px;
+        }
+        .brand-title { font-size: 22px; font-weight: 800; }
+        .brand-subtitle { font-size: 12px; color: var(--text-secondary); }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn {
+            background: var(--bg-surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border: none;
+        }
+        .btn-danger {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-rose);
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .metric-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; }
+        .metric-value { font-size: 26px; font-weight: 800; margin: 6px 0; font-family: monospace; }
+        .metric-sub { font-size: 12px; color: #6b7280; }
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+        .chip {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .chip.highlight {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #fbbf24;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #162032; color: var(--text-secondary); padding: 12px 16px; text-align: left; font-size: 11px; text-transform: uppercase; }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: monospace; }
+        .badge-override { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #f87171; }
+        .badge-pass { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-badge">TAHSIL</div>
+            <div>
+                <div class="brand-title">Neuro-Symbolic Revenue Recovery</div>
+                <div class="brand-subtitle">Razorpay AI Buildathon • Track 03 (AI Revenue Recovery)</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="runAllSimulations()">Run Full Pipeline</button>
+            <button class="btn btn-danger" onclick="resetDB()">Reset DB</button>
+        </div>
+    </header>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Invoices Processed</div>
+            <div class="metric-value" id="m-states">0</div>
+            <div class="metric-sub">Subscription telemetry states</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Recovery Events</div>
+            <div class="metric-value" id="m-events">0</div>
+            <div class="metric-sub">Audit trail entries logged</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Guardrail Overrides</div>
+            <div class="metric-value" id="m-overrides">0 (0%)</div>
+            <div class="metric-sub">LLM compliance clamps & overrides</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Value at Risk Protected</div>
+            <div class="metric-value" id="m-value">₹0.00</div>
+            <div class="metric-sub">Recurring ARR managed</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div style="font-size:15px; font-weight:700;">Live Scenario Triggers (Telemetry Ingestion)</div>
+        <div class="chips">
+            <div class="chip" onclick="triggerScenario('scenario_standard_retry')">1. Standard Retry (24h Cooldown)</div>
+            <div class="chip" onclick="triggerScenario('scenario_liquidity_window')">2. Salary Window Timing</div>
+            <div class="chip highlight" onclick="triggerScenario('scenario_exhausted_budget')">3. Staged Failure Moment (4th Retry Guardrail Override)</div>
+            <div class="chip" onclick="triggerScenario('scenario_bank_downtime')">4. Bank Downtime Collision Shift</div>
+            <div class="chip" onclick="triggerScenario('scenario_revoked_mandate')">5. Revoked Mandate Protection</div>
+            <div class="chip" onclick="triggerScenario('scenario_excessive_incentive')">6. Merchant Incentive Capping</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div style="font-size:15px; font-weight:700; margin-bottom:14px;">Pipeline Audit Log (LLM Proposal vs Deterministic Guardrail Verdict)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Invoice ID</th>
+                    <th>Event Type</th>
+                    <th>LLM Proposal</th>
+                    <th>Final Verdict</th>
+                    <th>Override?</th>
+                    <th>Details / Reasoning</th>
+                </tr>
+            </thead>
+            <tbody id="events-body">
+                <tr><td colspan="7" style="text-align:center; color:#6b7280; padding:32px;">No events yet. Click 'Run Full Pipeline' to simulate recoveries.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async default_fetch() {
+            try {
+                const mRes = await fetch('/api/metrics');
+                const m = await mRes.json();
+                document.getElementById('m-states').innerText = m.total_states || 0;
+                document.getElementById('m-events').innerText = m.total_events || 0;
+                document.getElementById('m-overrides').innerText = `${m.total_overrides || 0} (${m.override_rate_pct || 0}%)`;
+                document.getElementById('m-value').innerText = `₹${(m.total_value_at_risk_rupees || 0).fixed ? (m.total_value_at_risk_rupees).toLocaleString('en-IN', {minimumFractionDigits:2}) : '0.00'}`;
+
+                const eRes = await fetch('/api/events?limit=50');
+                const events = await eRes.json();
+                const body = document.getElementById('events-body');
+                if (events && events.length > 0) {
+                    body.innerHTML = events.map(ev => {
+                        let llm = '-', guard = '-', override = '-', detail = '-';
+                        if (ev.event_type === 'GUARDRAIL_VERDICT') {
+                            const v = ev.payload.verdict || {};
+                            llm = v.original_proposal ? v.original_proposal.intervention : '-';
+                            guard = v.final_intervention || '-';
+                            override = v.was_overridden ? '<span class="badge badge-override">OVERRIDEN</span>' : '<span class="badge badge-pass">PASSED</span>';
+                            detail = v.was_overridden ? v.override_reason : (v.original_proposal ? v.original_proposal.reasoning : '-');
+                        } else if (ev.event_type === 'LLM_PROPOSED') {
+                            llm = ev.payload.intervention || '-';
+                            detail = ev.payload.reasoning || '-';
+                        } else if (ev.event_type === 'EXECUTION_MOCKED') {
+                            const v = ev.payload.verdict || {};
+                            guard = v.final_intervention || '-';
+                            detail = 'Mocked Razorpay API call logged successfully.';
+                        } else {
+                            detail = `Payment failure ingested (Reason: ${ev.payload.last_failure_reason || 'U30_INSUFFICIENT_FUNDS'})`;
+                        }
+                        return `
+                            <tr>
+                                <td style="color:#6b7280;">${new Date(ev.timestamp).toLocaleTimeString()}</td>
+                                <td style="font-weight:700; color:#93c5fd;">${ev.invoice_id}</td>
+                                <td><span style="font-family:monospace; font-size:11px;">${ev.event_type}</span></td>
+                                <td><span style="font-family:monospace; color:#60a5fa;">${llm}</span></td>
+                                <td><span style="font-family:monospace; color:#34d399;">${guard}</span></td>
+                                <td>${override}</td>
+                                <td style="color:#9ca3af; max-width:300px;">${detail}</td>
+                            </tr>
+                        `;
+                }).join('');
+            }
+        } catch(err) {
+            console.error(err);
+        }
+        }
+
+        async function triggerScenario(name) {
+            await fetch(`/api/simulate/${name}`, { method: 'POST' });
+            await default_fetch();
+        }
+
+        async function runAllSimulations() {
+            await fetch('/api/simulate-all', { method: 'POST' });
+            await default_fetch();
+        }
+
+        async function resetDB() {
+            if (confirm('Reset Tahsil database?')) {
+                await fetch('/api/reset', { method: 'POST' });
+                await default_fetch();
+            }
+        }
+
+        default_fetch();
+        setInterval(default_fetch, 2000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TAHSĪL — Autonomous Mandate Recovery Engine</title>
+
+  <!-- Preconnects -->
+  <link rel="preconnect" href="https://d8j0ntlcm91z4.cloudfront.net" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Sora:wght@200;300;400&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #ffffff;
+      --text-dim: rgba(255, 255, 255, 0.62);
+      --text-dimmer: rgba(255, 255, 255, 0.42);
+      --line: rgba(255, 255, 255, 0.14);
+      --line-strong: rgba(255, 255, 255, 0.26);
+      --fill-ghost: rgba(255, 255, 255, 0.05);
+      --fill-solid: rgba(255, 255, 255, 0.10);
+      --gutter: clamp(20px, 5vw, 100px);
+      --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+      --font-display: "Sora", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-display);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+
+    body.menu-open {
+      overflow: hidden;
+    }
+
+    /* Full-viewport Hero Container */
+    .hero {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      height: 100svh;
+      min-height: 640px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      isolation: isolate;
+      background-color: var(--bg);
+    }
+
+    @media (max-height: 640px) {
+      .hero {
+        min-height: 100svh;
+      }
+    }
+
+    /* Media Layer */
+    .hero__media {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .hero__video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+
+    /* Scrim Layer */
+    .hero__scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    @media (min-width: 721px) {
+      .hero__scrim {
+        background:
+          linear-gradient(to right, transparent 0%, transparent 45%, rgba(0, 0, 0, 0.45) 72%, rgba(0, 0, 0, 0.72) 100%),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.55) 0%, transparent 22%, transparent 78%, rgba(0, 0, 0, 0.65) 100%);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .hero__scrim {
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 30%, rgba(0, 0, 0, 0.75) 100%);
+      }
+    }
+
+    /* Row 1: Navbar */
+    .hero__nav {
+      position: relative;
+      z-index: 60;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 32px;
+      padding: clamp(20px, 2.4vw, 34px) var(--gutter);
+      padding-top: max(clamp(20px, 2.4vw, 34px), env(safe-area-inset-top));
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
+    }
+
+    .nav__logo {
+      font-family: var(--font-display);
+      font-weight: 200;
+      font-size: clamp(20px, 1.75vw, 30px);
+      letter-spacing: 0.16em;
+      color: var(--text);
+      text-decoration: none;
+      line-height: 1;
+    }
+
+    .nav__cluster {
+      display: flex;
+      align-items: center;
+      gap: clamp(24px, 3.2vw, 62px);
+    }
+
+    .nav__links {
+      display: flex;
+      align-items: center;
+      gap: clamp(20px, 2.8vw, 56px);
+      list-style: none;
+    }
+
+    .nav__link {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(11px, 0.78vw, 14px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+      transition: color 0.25s ease;
+    }
+
+    .nav__link:hover {
+      color: var(--text-dim);
+    }
+
+    .nav__cta {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(11px, 0.78vw, 14px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+      padding: clamp(12px, 1vw, 17px) clamp(20px, 1.8vw, 32px);
+      border: 1px solid var(--line-strong);
+      transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+
+    .nav__cta:hover {
+      background-color: var(--fill-ghost);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .nav__toggle {
+      display: none;
+      position: relative;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      z-index: 70;
+    }
+
+    .nav__toggle-bar {
+      position: absolute;
+      left: 50%;
+      width: 22px;
+      height: 1px;
+      background-color: var(--text);
+      transform: translateX(-50%);
+      transition: transform 0.45s var(--ease-premium), opacity 0.25s ease, top 0.45s var(--ease-premium);
+    }
+
+    .nav__toggle-bar--1 { top: 16px; }
+    .nav__toggle-bar--2 { top: 22px; }
+    .nav__toggle-bar--3 { top: 28px; }
+
+    .nav__toggle[aria-expanded="true"] .nav__toggle-bar--1 {
+      top: 22px;
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .nav__toggle[aria-expanded="true"] .nav__toggle-bar--2 {
+      opacity: 0;
+      transform: translateX(-50%) scaleX(0);
+    }
+
+    .nav__toggle[aria-expanded="true"] .nav__toggle-bar--3 {
+      top: 22px;
+      transform: translateX(-50%) rotate(-45deg);
+    }
+
+    @media (max-width: 900px) {
+      .nav__links, .nav__cta {
+        display: none;
+      }
+      .nav__toggle {
+        display: block;
+      }
+    }
+
+    /* Mobile Menu Overlay */
+    .mobile-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(4, 4, 6, 0.94);
+      backdrop-filter: blur(28px) saturate(140%);
+      -webkit-backdrop-filter: blur(28px) saturate(140%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      clip-path: circle(3% at calc(100% - 42px) 42px);
+      opacity: 0;
+      pointer-events: none;
+      transition: clip-path 0.7s var(--ease-premium), opacity 0.45s ease;
+    }
+
+    .mobile-menu.is-open {
+      clip-path: circle(150% at calc(100% - 42px) 42px);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-menu__list {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(24px, 4vw, 36px);
+      list-style: none;
+      text-align: center;
+    }
+
+    .mobile-menu__item {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.4s ease, transform 0.5s var(--ease-premium);
+      transition-delay: calc(180ms + var(--i) * 70ms);
+    }
+
+    .mobile-menu.is-open .mobile-menu__item {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .mobile-menu__link {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(20px, 5.5vw, 28px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+      transition: color 0.25s ease;
+    }
+
+    .mobile-menu__link:hover {
+      color: var(--text-dim);
+    }
+
+    .mobile-menu__cta {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(13px, 3.5vw, 16px);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+      padding: 16px 40px;
+      border: 1px solid var(--line-strong);
+      margin-top: 12px;
+      display: inline-block;
+      transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+
+    .mobile-menu__cta:hover {
+      background-color: var(--fill-ghost);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Row 2: Right Panel / Hero Body */
+    .hero__body {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 var(--gutter);
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 720px) {
+      .hero__body {
+        justify-content: center;
+      }
+    }
+
+    .panel {
+      width: min(34vw, 620px);
+      min-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 1100px) {
+      .panel {
+        width: min(70vw, 520px);
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .panel {
+        width: 100%;
+        align-items: stretch;
+      }
+    }
+
+    .panel__chip {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(11px, 0.72vw, 14px);
+      letter-spacing: 0.2em;
+      background: rgba(255, 255, 255, 0.09);
+      padding: clamp(9px, 0.8vw, 14px) clamp(14px, 1.1vw, 20px);
+      line-height: 1;
+      color: var(--text);
+      border-radius: 0;
+      align-self: flex-start;
+    }
+
+    .panel__h1 {
+      font-family: var(--font-display);
+      font-weight: 200;
+      font-size: clamp(54px, 6.2vw, 118px);
+      letter-spacing: 0.05em;
+      line-height: 0.95;
+      margin-top: clamp(28px, 3vw, 52px);
+      color: var(--text);
+    }
+
+    @media (max-width: 380px) {
+      .panel__h1 {
+        font-size: clamp(44px, 15vw, 64px);
+      }
+    }
+
+    .panel__tagline {
+      font-family: var(--font-mono);
+      font-weight: 300;
+      font-size: clamp(11px, 0.94vw, 17px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: clamp(14px, 1.4vw, 24px);
+      line-height: 1.4;
+    }
+
+    .panel__form {
+      margin-top: clamp(38px, 4.6vw, 82px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(14px, 1.3vw, 22px);
+      width: 100%;
+    }
+
+    .panel__input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--line-strong);
+      border-radius: 0;
+      padding: 0 2px clamp(12px, 1.1vw, 18px);
+      font-family: var(--font-display);
+      font-weight: 300;
+      font-size: clamp(16px, 0.95vw, 18px);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.25s ease;
+    }
+
+    .panel__input::placeholder {
+      color: var(--text-dim);
+      transition: color 0.25s ease;
+    }
+
+    .panel__input:focus {
+      border-bottom-color: rgba(255, 255, 255, 0.85);
+    }
+
+    .panel__input:focus::placeholder {
+      color: var(--text-dimmer);
+    }
+
+    .btn {
+      width: 100%;
+      border-radius: 0;
+      border: none;
+      padding: clamp(17px, 1.6vw, 27px) 20px;
+      font-family: var(--font-mono);
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      font-size: clamp(11px, 0.78vw, 14px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+
+    .btn--ghost {
+      background: var(--fill-ghost);
+      color: var(--text-dimmer);
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .btn--ghost:hover {
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--text);
+    }
+
+    .btn--solid {
+      background: var(--fill-solid);
+      color: var(--text);
+      transition: background-color 0.25s ease;
+    }
+
+    .btn--solid:hover {
+      background: rgba(255, 255, 255, 0.17);
+    }
+
+    .panel__trigger {
+      font-family: var(--font-mono);
+      font-weight: 400;
+      font-size: clamp(11px, 0.74vw, 14px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+      margin-top: clamp(26px, 2.6vw, 46px);
+      align-self: center;
+      transition: color 0.25s ease;
+      cursor: pointer;
+    }
+
+    .panel__trigger:hover {
+      color: var(--text-dim);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    /* Row 3: Legal Footer */
+    .hero__footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid var(--line);
+      padding: clamp(18px, 1.7vw, 30px) var(--gutter);
+      padding-bottom: max(clamp(18px, 1.7vw, 30px), env(safe-area-inset-bottom));
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
+      text-align: center;
+    }
+
+    .hero__legal {
+      font-family: var(--font-display);
+      font-weight: 300;
+      font-size: clamp(12px, 0.82vw, 16px);
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .legal-link {
+      color: var(--text);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+      transition: color 0.25s ease;
+    }
+
+    .legal-link:hover {
+      color: var(--text-dim);
+    }
+
+    /* A11y Helper */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    :focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.7);
+      outline-offset: 3px;
+    }
+
+    /* Prefers Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .hero__video {
+        display: none;
+      }
+      .hero__media {
+        background-image: url('https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260806_132328_5f9029c8-218f-4489-82b6-29ff2849920e.png');
+        background-size: cover;
+        background-position: center;
+      }
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+
+    /* Short-Height Compression */
+    @media (max-height: 640px) {
+      .hero__nav {
+        padding: 12px var(--gutter);
+      }
+      .panel__h1 {
+        font-size: clamp(36px, 7vw, 64px);
+        margin-top: 14px;
+      }
+      .panel__tagline {
+        margin-top: 8px;
+      }
+      .panel__form {
+        margin-top: 16px;
+        gap: 10px;
+      }
+      .btn {
+        padding: 10px 16px;
+      }
+      .panel__trigger {
+        margin-top: 12px;
+      }
+      .hero__footer {
+        padding: 10px var(--gutter);
+      }
+      .hero__legal {
+        font-size: 11px;
+      }
+      .mobile-menu__list {
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Viewport Hero -->
+  <section class="hero">
+    
+    <!-- Background Video & Poster -->
+    <div class="hero__media" aria-hidden="true">
+      <video
+        class="hero__video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        poster="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260806_132328_5f9029c8-218f-4489-82b6-29ff2849920e.png"
+      >
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260806_133255_956f653f-5d80-4b06-abd5-0f46c98b60fa.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <!-- Dual Scrim Gradient Overlay -->
+    <div class="hero__scrim" aria-hidden="true"></div>
+
+    <!-- Row 1: Navbar -->
+    <header class="hero__nav">
+      <a href="/" class="nav__logo">TAHSĪL</a>
+      
+      <div class="nav__cluster">
+        <nav aria-label="Desktop navigation">
+          <ul class="nav__links">
+            <li><a href="#architecture" class="nav__link">Architecture</a></li>
+            <li><a href="#guardrails" class="nav__link">Guardrails</a></li>
+            <li><a href="#scenarios" class="nav__link">Scenarios</a></li>
+            <li><a href="#telemetry" class="nav__link">Telemetry</a></li>
+          </ul>
+        </nav>
+        <a href="/dashboard" class="nav__cta">Run Demo</a>
+      </div>
+
+      <button
+        type="button"
+        class="nav__toggle"
+        id="navToggle"
+        aria-expanded="false"
+        aria-controls="mobileMenu"
+        aria-label="Open menu"
+      >
+        <span class="nav__toggle-bar nav__toggle-bar--1" aria-hidden="true"></span>
+        <span class="nav__toggle-bar nav__toggle-bar--2" aria-hidden="true"></span>
+        <span class="nav__toggle-bar nav__toggle-bar--3" aria-hidden="true"></span>
+      </button>
+    </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div
+      id="mobileMenu"
+      class="mobile-menu"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Site menu"
+      aria-hidden="true"
+      inert
+    >
+      <ul class="mobile-menu__list">
+        <li class="mobile-menu__item" style="--i: 0;"><a href="#architecture" class="mobile-menu__link">Architecture</a></li>
+        <li class="mobile-menu__item" style="--i: 1;"><a href="#guardrails" class="mobile-menu__link">Guardrails</a></li>
+        <li class="mobile-menu__item" style="--i: 2;"><a href="#scenarios" class="mobile-menu__link">Scenarios</a></li>
+        <li class="mobile-menu__item" style="--i: 3;"><a href="#telemetry" class="mobile-menu__link">Telemetry</a></li>
+        <li class="mobile-menu__item" style="--i: 4;"><a href="/dashboard" class="mobile-menu__cta">Run Demo</a></li>
+      </ul>
+    </div>
+
+    <!-- Row 2: Right-aligned Telemetry Command Panel -->
+    <main class="hero__body">
+      <div class="panel">
+        
+        <!-- 1) Chip -->
+        <div class="panel__chip">[ AUTOPAY RECOVERY CORE ]</div>
+
+        <!-- 2) H1 -->
+        <h1 class="panel__h1">TAHSĪL</h1>
+
+        <!-- 3) Tagline -->
+        <p class="panel__tagline">BRAINS TO REASON. BRAKES FOR MONEY.</p>
+
+        <!-- 4) Form -->
+        <form class="panel__form" action="#" method="post" novalidate id="recoveryForm">
+          <label for="subInput" class="sr-only">Subscription ID</label>
+          <input
+            id="subInput"
+            class="panel__input"
+            type="text"
+            name="subscription_id"
+            placeholder="Enter sub_id or invoice_id"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
+          <button type="button" class="btn btn--ghost" id="btnSimulate">
+            Simulate payment.failed webhook
+          </button>
+
+          <button type="button" class="btn btn--solid" id="btnConsole">
+            Open Live Ops Console
+          </button>
+        </form>
+
+        <!-- 5) Bottom Trigger Link -->
+        <a href="/dashboard#override-demo" class="panel__trigger" id="linkOverride">
+          Trigger Staged Guardrail Override
+        </a>
+
+      </div>
+    </main>
+
+    <!-- Row 3: Legal Footer -->
+    <footer class="hero__footer">
+      <p class="hero__legal">
+        Tahsīl operates within <a href="#npci-rules" class="legal-link">NPCI e-Mandate circulars</a>, <a href="#rbi-guidelines" class="legal-link">RBI Cooldown Guidelines</a>, and Razorpay API specifications.
+      </p>
+    </footer>
+
+  </section>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById('navToggle');
+      const menu = document.getElementById('mobileMenu');
+      const mobileLinks = menu.querySelectorAll('a');
+      const recoveryForm = document.getElementById('recoveryForm');
+      const btnSimulate = document.getElementById('btnSimulate');
+      const btnConsole = document.getElementById('btnConsole');
+      const linkOverride = document.getElementById('linkOverride');
+
+      function openMenu() {
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.setAttribute('aria-label', 'Close menu');
+        menu.classList.add('is-open');
+        menu.removeAttribute('aria-hidden');
+        menu.removeAttribute('inert');
+        document.body.classList.add('menu-open');
+      }
+
+      function closeMenu() {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Open menu');
+        menu.classList.remove('is-open');
+        menu.setAttribute('aria-hidden', 'true');
+        menu.setAttribute('inert', '');
+        document.body.classList.remove('menu-open');
+        toggle.focus();
+      }
+
+      toggle.addEventListener('click', function () {
+        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          closeMenu();
+        } else {
+          openMenu();
+        }
+      });
+
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          closeMenu();
+        });
+      });
+
+      // Close on escape
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+          closeMenu();
+        }
+      });
+
+      // Auto close if resized to desktop
+      window.addEventListener('resize', function () {
+        if (window.innerWidth >= 901 && toggle.getAttribute('aria-expanded') === 'true') {
+          closeMenu();
+        }
+      });
+
+      // Prevent form default submit
+      recoveryForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        window.location.href = '/dashboard';
+      });
+
+      // Simulate button handler
+      btnSimulate.addEventListener('click', async function () {
+        btnSimulate.textContent = 'Simulating Webhook...';
+        try {
+          await fetch('/api/simulate/scenario_standard_retry', { method: 'POST' });
+        } catch (err) {}
+        window.location.href = '/dashboard';
+      });
+
+      // Console button handler
+      btnConsole.addEventListener('click', function () {
+        window.location.href = '/dashboard';
+      });
+
+      // Trigger override handler
+      linkOverride.addEventListener('click', async function (e) {
+        e.preventDefault();
+        try {
+          await fetch('/api/simulate/scenario_exhausted_budget', { method: 'POST' });
+        } catch (err) {}
+        window.location.href = '/dashboard#override-demo';
+      });
+    })();
+  </script>
+</body>
+</html>
