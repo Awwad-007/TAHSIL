@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TAHSĪL // Autonomous Mandate Recovery Terminal</title>
+  <title>TAHSĪL · Autonomous Mandate Recovery Terminal</title>
 
   <!-- Preconnects & Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,20 +16,28 @@
       --surface-1: #070709;
       --surface-2: #0d0e12;
       --surface-3: #14151c;
-      --surface-active: #1a1b24;
+      --surface-active: #191b26;
       --line: rgba(255, 255, 255, 0.08);
-      --line-strong: rgba(255, 255, 255, 0.16);
+      --line-strong: rgba(255, 255, 255, 0.15);
       --text: #ffffff;
       --text-dim: rgba(255, 255, 255, 0.62);
       --text-dimmer: rgba(255, 255, 255, 0.38);
-      --amber: #e5a93c;
-      --amber-glow: rgba(229, 169, 60, 0.12);
-      --amber-border: rgba(229, 169, 60, 0.45);
+      
+      /* Accents */
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.12);
+      --amber-border: rgba(245, 158, 11, 0.35);
+      
       --emerald: #10b981;
       --emerald-glow: rgba(16, 185, 129, 0.12);
       --emerald-border: rgba(16, 185, 129, 0.35);
-      --cyan: #94a3b8;
-      --cyan-soft: #38bdf8;
+      
+      --blue-ice: #38bdf8;
+      --violet: #a78bfa;
+      --rose: #f43f5e;
+      --cyan: #22d3ee;
+      --slate: #94a3b8;
+
       --font-display: "Sora", "Helvetica Neue", Arial, sans-serif;
       --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
       --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
@@ -59,9 +67,9 @@
       grid-template-rows: auto auto auto 1fr;
       height: 100vh;
       height: 100svh;
-      padding: 16px 20px;
+      padding: 14px 18px;
       gap: 12px;
-      background: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.03) 0%, transparent 60%), #000;
+      background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.025) 0%, transparent 60%), #000;
     }
 
     /* 1. Header */
@@ -69,49 +77,56 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 14px;
+      padding: 10px 16px;
       background: var(--surface-1);
       border: 1px solid var(--line);
-      border-radius: 2px;
+      border-radius: 4px;
     }
 
     .term-brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .brand-logo {
       font-family: var(--font-display);
       font-weight: 200;
-      font-size: 17px;
-      letter-spacing: 0.18em;
+      font-size: 18px;
+      letter-spacing: 0.16em;
       color: var(--text);
       text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      line-height: 1;
     }
 
-    .brand-logo span {
-      color: var(--text-dimmer);
+    .header-divider {
+      color: rgba(255, 255, 255, 0.2);
+      font-weight: 300;
+      font-size: 13px;
+    }
+
+    .brand-subtitle {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-weight: 300;
+      font-size: 11.5px;
       letter-spacing: 0.12em;
+      color: var(--slate);
+      text-transform: uppercase;
     }
 
     .live-beacon {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 3px 8px;
+      padding: 4px 9px;
       background: var(--emerald-glow);
       border: 1px solid var(--emerald-border);
       font-family: var(--font-mono);
       font-size: 10px;
       letter-spacing: 0.14em;
       color: var(--emerald);
-      border-radius: 2px;
+      border-radius: 3px;
+      margin-left: 6px;
     }
 
     .pulse-dot {
@@ -138,11 +153,11 @@
     .btn-hw {
       font-family: var(--font-mono);
       font-size: 11px;
-      letter-spacing: 0.16em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      padding: 7px 14px;
+      padding: 8px 16px;
       cursor: pointer;
-      border-radius: 2px;
+      border-radius: 3px;
       transition: all 0.2s var(--ease-premium);
       display: inline-flex;
       align-items: center;
@@ -163,8 +178,8 @@
     }
 
     .btn-hw--primary {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       color: var(--text);
       font-weight: 500;
     }
@@ -186,129 +201,128 @@
     .kpi-cell {
       background: var(--surface-1);
       border: 1px solid var(--line);
-      border-radius: 2px;
-      padding: 12px 16px;
+      border-radius: 4px;
+      padding: 14px 16px;
       position: relative;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    .kpi-cell::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 2px;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    .kpi-cell.kpi-cell--amber::before {
-      background: var(--amber);
-      box-shadow: 0 0 8px var(--amber);
-    }
-
-    .kpi-cell.kpi-cell--emerald::before {
-      background: var(--emerald);
-      box-shadow: 0 0 8px var(--emerald);
-    }
+    .kpi-cell--invoices { border-top: 1px solid rgba(56, 189, 248, 0.45); }
+    .kpi-cell--decisions { border-top: 1px solid rgba(148, 163, 184, 0.35); }
+    .kpi-cell--overrides { border-top: 1px solid rgba(245, 158, 11, 0.45); }
+    .kpi-cell--value { border-top: 1px solid rgba(52, 211, 153, 0.55); }
 
     .kpi-tag {
       font-family: var(--font-mono);
       font-size: 9.5px;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--text-dimmer);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .kpi-val {
       font-family: var(--font-display);
-      font-weight: 200;
-      font-size: 26px;
+      font-weight: 300;
+      font-size: 2.2rem;
       line-height: 1.1;
       color: var(--text);
-      letter-spacing: 0.02em;
+      letter-spacing: -0.01em;
     }
 
-    .kpi-val.kpi-val--mono {
-      font-family: var(--font-mono);
-      font-weight: 400;
-      font-size: 22px;
+    .kpi-val.kpi-val--amber {
+      color: var(--amber);
     }
 
     .kpi-sub {
       font-family: var(--font-mono);
       font-size: 10px;
       color: var(--text-dimmer);
-      margin-top: 4px;
-      letter-spacing: 0.06em;
+      margin-top: 6px;
+      letter-spacing: 0.05em;
     }
 
-    /* 3. Scenario Command Bus */
+    /* 3. Scenario Command Bus (Hardware Keys) */
     .command-bus {
       background: var(--surface-1);
       border: 1px solid var(--line);
-      border-radius: 2px;
+      border-radius: 4px;
       padding: 8px 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       overflow-x: auto;
     }
 
     .bus-label {
       font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.18em;
+      font-size: 10.5px;
+      letter-spacing: 0.16em;
       color: var(--text-dimmer);
       text-transform: uppercase;
-      padding-right: 8px;
+      padding-right: 10px;
       border-right: 1px solid var(--line);
       white-space: nowrap;
     }
 
     .bus-triggers {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       flex-wrap: nowrap;
       flex: 1;
     }
 
-    .bus-btn {
-      background: var(--surface-2);
-      border: 1px solid var(--line);
+    .hw-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
       color: var(--text-dim);
       font-family: var(--font-mono);
-      font-size: 10.5px;
-      letter-spacing: 0.12em;
-      padding: 6px 12px;
+      font-size: clamp(12px, 0.82vw, 14px);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       cursor: pointer;
-      border-radius: 2px;
       white-space: nowrap;
       transition: all 0.2s ease;
     }
 
-    .bus-btn:hover {
-      background: var(--surface-3);
-      color: var(--text);
-      border-color: var(--line-strong);
+    .hw-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: box-shadow 0.2s ease;
     }
 
-    .bus-btn.bus-btn--staged {
-      background: var(--amber-glow);
-      border-color: var(--amber-border);
-      color: var(--amber);
-      font-weight: 500;
+    .hw-dot--ice { background-color: var(--blue-ice); box-shadow: 0 0 6px var(--blue-ice); }
+    .hw-dot--emerald { background-color: var(--emerald); box-shadow: 0 0 6px var(--emerald); }
+    .hw-dot--amber { background-color: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .hw-dot--violet { background-color: var(--violet); box-shadow: 0 0 6px var(--violet); }
+    .hw-dot--rose { background-color: var(--rose); box-shadow: 0 0 6px var(--rose); }
+    .hw-dot--cyan { background-color: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+    .hw-key:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      transform: translateY(-1px);
     }
 
-    .bus-btn.bus-btn--staged:hover {
-      background: rgba(229, 169, 60, 0.22);
-      box-shadow: 0 0 12px var(--amber-glow);
-      color: #fff;
-    }
+    .hw-key[data-accent="ice"]:hover { border-color: var(--blue-ice); }
+    .hw-key[data-accent="emerald"]:hover { border-color: var(--emerald); }
+    .hw-key[data-accent="amber"]:hover { border-color: var(--amber); }
+    .hw-key[data-accent="violet"]:hover { border-color: var(--violet); }
+    .hw-key[data-accent="rose"]:hover { border-color: var(--rose); }
+    .hw-key[data-accent="cyan"]:hover { border-color: var(--cyan); }
 
     /* 4. Live Split Ledger */
     .split-ledger {
@@ -322,7 +336,7 @@
     .ledger-pane {
       background: var(--surface-1);
       border: 1px solid var(--line);
-      border-radius: 2px;
+      border-radius: 4px;
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -330,7 +344,7 @@
     }
 
     .pane-header {
-      padding: 8px 14px;
+      padding: 9px 16px;
       background: var(--surface-2);
       border-bottom: 1px solid var(--line);
       display: flex;
@@ -339,17 +353,32 @@
     }
 
     .pane-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-family: var(--font-mono);
-      font-size: 10.5px;
-      letter-spacing: 0.18em;
+      font-size: 11px;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--text-dim);
     }
 
+    .badge-tag {
+      font-size: 9.5px;
+      color: var(--slate);
+      letter-spacing: 0.14em;
+    }
+
+    .sep-dot {
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 12px;
+    }
+
     .pane-count {
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 10.5px;
       color: var(--text-dimmer);
+      letter-spacing: 0.08em;
     }
 
     /* Left Table */
@@ -362,7 +391,7 @@
       width: 100%;
       border-collapse: collapse;
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 11.5px;
     }
 
     .term-table th {
@@ -371,9 +400,9 @@
       background: #090a0f;
       color: var(--text-dimmer);
       font-size: 9.5px;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      padding: 8px 12px;
+      padding: 9px 14px;
       border-bottom: 1px solid var(--line);
       text-align: left;
       font-weight: 500;
@@ -381,7 +410,7 @@
     }
 
     .term-table td {
-      padding: 8px 12px;
+      padding: 9px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       color: var(--text-dim);
       white-space: nowrap;
@@ -403,14 +432,14 @@
     }
 
     .term-table tr.selected td:first-child {
-      border-left: 2px solid var(--cyan-soft);
+      border-left: 2px solid var(--blue-ice);
     }
 
     .badge-status {
       font-size: 10px;
-      letter-spacing: 0.12em;
-      padding: 2px 6px;
-      border-radius: 2px;
+      letter-spacing: 0.1em;
+      padding: 3px 7px;
+      border-radius: 3px;
       font-weight: 500;
       display: inline-block;
     }
@@ -425,7 +454,7 @@
       background: var(--amber-glow);
       color: var(--amber);
       border: 1px solid var(--amber-border);
-      box-shadow: 0 0 8px rgba(229, 169, 60, 0.2);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
     }
 
     /* Right Inspection Drawer */
@@ -441,15 +470,15 @@
     .inspect-card {
       background: var(--surface-2);
       border: 1px solid var(--line);
-      border-radius: 2px;
-      padding: 12px;
+      border-radius: 4px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
     .inspect-card--neural {
-      border-left: 2px solid var(--cyan-soft);
+      border-left: 2px solid var(--blue-ice);
     }
 
     .inspect-card--symbolic {
@@ -465,14 +494,14 @@
       justify-content: space-between;
       align-items: center;
       font-family: var(--font-mono);
-      font-size: 9.5px;
-      letter-spacing: 0.16em;
+      font-size: 10px;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--text-dimmer);
     }
 
     .card-meta span.accent {
-      color: var(--cyan-soft);
+      color: var(--blue-ice);
     }
 
     .card-meta span.accent-amber {
@@ -486,23 +515,32 @@
     .card-reasoning {
       font-family: var(--font-display);
       font-weight: 300;
-      font-size: 12.5px;
+      font-size: 13px;
       line-height: 1.45;
       color: var(--text);
     }
 
-    .code-block {
-      background: #040406;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 2px;
-      padding: 8px 10px;
+    /* JSON Inspector Syntax Highlighted Box */
+    .code-container {
+      background: #050507;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 4px;
+      padding: 12px 14px;
       font-family: var(--font-mono);
-      font-size: 10.5px;
+      font-size: 11px;
       color: #cbd5e1;
       overflow-x: auto;
       white-space: pre-wrap;
-      line-height: 1.4;
+      line-height: 1.45;
     }
+
+    /* Syntax Highlighting Tokens */
+    .syn-key { color: #7dd3fc; }
+    .syn-str { color: #86efac; }
+    .syn-num { color: #fde047; }
+    .syn-bool { color: #f472b6; }
+    .syn-null { color: #94a3b8; }
+    .syn-punct { color: #64748b; }
 
     .empty-prompt {
       display: flex;
@@ -514,12 +552,12 @@
       color: var(--text-dimmer);
       font-family: var(--font-mono);
       font-size: 11px;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.12em;
       gap: 8px;
       padding: 30px;
     }
 
-    /* Scrollbars */
+    /* Minimalist Dark Scrollbars */
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
@@ -528,11 +566,11 @@
       background: var(--surface-1);
     }
     ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.12);
       border-radius: 2px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.25);
     }
 
     @media (max-width: 1024px) {
@@ -560,9 +598,9 @@
     <!-- 1. Header -->
     <header class="term-header">
       <div class="term-brand">
-        <a href="/" class="brand-logo">
-          TAHSĪL <span>// RECOVERY_DEFENSE_TERMINAL</span>
-        </a>
+        <a href="/" class="brand-logo">TAHSĪL</a>
+        <span class="header-divider">|</span>
+        <span class="brand-subtitle">Autonomous Mandate Recovery</span>
         <div class="live-beacon">
           <span class="pulse-dot"></span>
           [ NPCI AUTO-GUARD ACTIVE ]
@@ -581,7 +619,7 @@
 
     <!-- 2. KPI Telemetry Strip -->
     <section class="kpi-strip" aria-label="Telemetry KPI Summary">
-      <div class="kpi-cell">
+      <div class="kpi-cell kpi-cell--invoices">
         <div class="kpi-tag">
           <span>Invoices Ingested</span>
           <span>[STATE_STORE]</span>
@@ -590,25 +628,25 @@
         <div class="kpi-sub">Subscription telemetry states active</div>
       </div>
 
-      <div class="kpi-cell">
+      <div class="kpi-cell kpi-cell--decisions">
         <div class="kpi-tag">
           <span>Recovery Decisions</span>
           <span>[VERDICTS]</span>
         </div>
-        <div class="kpi-val kpi-val--mono" id="kpi-verdicts">0</div>
+        <div class="kpi-val" id="kpi-verdicts">0</div>
         <div class="kpi-sub">Guardrail compliance evaluations</div>
       </div>
 
-      <div class="kpi-cell kpi-cell--amber" id="kpi-cell-overrides">
+      <div class="kpi-cell kpi-cell--overrides">
         <div class="kpi-tag">
           <span>Guardrail Overrides</span>
           <span>[FIREWALL]</span>
         </div>
-        <div class="kpi-val kpi-val--mono" id="kpi-overrides" style="color: var(--amber);">0 (0.0%)</div>
+        <div class="kpi-val kpi-val--amber" id="kpi-overrides">0 (0.0%)</div>
         <div class="kpi-sub">Unauthorized LLM actions blocked/clamped</div>
       </div>
 
-      <div class="kpi-cell kpi-cell--emerald">
+      <div class="kpi-cell kpi-cell--value">
         <div class="kpi-tag">
           <span>Value at Risk Shielded</span>
           <span>[ARR_INR]</span>
@@ -618,27 +656,33 @@
       </div>
     </section>
 
-    <!-- 3. Scenario Command Bus -->
+    <!-- 3. Scenario Command Bus (Hardware Keys) -->
     <nav class="command-bus" aria-label="Interactive Scenario Matrix">
-      <div class="bus-label">Simulate Failure:</div>
+      <div class="bus-label">Simulate:</div>
       <div class="bus-triggers">
-        <button type="button" class="bus-btn" onclick="triggerScenario('scenario_standard_retry')">
-          [01 // 24H_COOLDOWN]
+        <button type="button" class="hw-key" data-accent="ice" onclick="triggerScenario('scenario_standard_retry')">
+          <span class="hw-dot hw-dot--ice"></span>
+          24H Cooldown
         </button>
-        <button type="button" class="bus-btn" onclick="triggerScenario('scenario_liquidity_window')">
-          [02 // SALARY_LIQUIDITY]
+        <button type="button" class="hw-key" data-accent="emerald" onclick="triggerScenario('scenario_liquidity_window')">
+          <span class="hw-dot hw-dot--emerald"></span>
+          Salary Liquidity
         </button>
-        <button type="button" class="bus-btn bus-btn--staged" id="btnStaged" onclick="triggerScenario('scenario_exhausted_budget')">
-          ⚡ [03 // STAGED_FAILURE_OVERRIDE]
+        <button type="button" class="hw-key" data-accent="amber" id="btnStaged" onclick="triggerScenario('scenario_exhausted_budget')">
+          <span class="hw-dot hw-dot--amber"></span>
+          Staged Failure Override
         </button>
-        <button type="button" class="bus-btn" onclick="triggerScenario('scenario_bank_downtime')">
-          [04 // CBS_MAINTENANCE_SHIFT]
+        <button type="button" class="hw-key" data-accent="violet" onclick="triggerScenario('scenario_bank_downtime')">
+          <span class="hw-dot hw-dot--violet"></span>
+          Bank Downtime Shift
         </button>
-        <button type="button" class="bus-btn" onclick="triggerScenario('scenario_revoked_mandate')">
-          [05 // MANDATE_REVOCATION]
+        <button type="button" class="hw-key" data-accent="rose" onclick="triggerScenario('scenario_revoked_mandate')">
+          <span class="hw-dot hw-dot--rose"></span>
+          Mandate Revocation
         </button>
-        <button type="button" class="bus-btn" onclick="triggerScenario('scenario_excessive_incentive')">
-          [06 // INCENTIVE_CAP_CLAMP]
+        <button type="button" class="hw-key" data-accent="cyan" onclick="triggerScenario('scenario_excessive_incentive')">
+          <span class="hw-dot hw-dot--cyan"></span>
+          Incentive Capping
         </button>
       </div>
     </nav>
@@ -649,7 +693,10 @@
       <!-- Left: Live Audit Log Table -->
       <section class="ledger-pane">
         <div class="pane-header">
-          <span class="pane-title">Event Ledger // Ingestion to Verdict Audit</span>
+          <div class="pane-title">
+            <span style="font-family: var(--font-display); font-weight: 300; color: #fff;">EVENT LEDGER</span>
+            <span class="badge-tag">[ LIVE AUDIT STREAM ]</span>
+          </div>
           <span class="pane-count" id="event-count">0 ENTRIES</span>
         </div>
         
@@ -679,8 +726,12 @@
       <!-- Right: Deep Inspection Drawer -->
       <aside class="ledger-pane">
         <div class="pane-header">
-          <span class="pane-title">Deconstruction Drawer // Neural vs Symbolic Diff</span>
-          <span class="pane-count" id="inspect-inv-id">[SELECT ROW]</span>
+          <div class="pane-title">
+            <span style="font-family: var(--font-display); font-weight: 300; color: #fff;">INSPECTION DRAWER</span>
+            <span class="sep-dot">·</span>
+            <span>NEURAL VS SYMBOLIC DIFF</span>
+          </div>
+          <span class="pane-count" id="inspect-inv-id">INVOICE · SELECT ROW</span>
         </div>
 
         <div class="drawer-body" id="drawer-content">
@@ -699,6 +750,28 @@
   <script>
     let rawEvents = [];
     let selectedEventId = null;
+
+    // Custom syntax highlighter for JSON objects
+    function formatJsonWithHighlight(obj) {
+      if (!obj) return '';
+      let json = JSON.stringify(obj, null, 2);
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'syn-num';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'syn-key';
+          } else {
+            cls = 'syn-str';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'syn-bool';
+        } else if (/null/.test(match)) {
+          cls = 'syn-null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
 
     async function fetchTelemetry() {
       try {
@@ -780,7 +853,7 @@
           <tr class="${isSelected ? 'selected' : ''}" onclick="selectRow(${ev.id})">
             <td style="color: var(--text-dimmer);">${timeStr}</td>
             <td style="font-weight: 500; color: #fff;">${ev.invoice_id}</td>
-            <td style="color: var(--cyan-soft); font-size: 10px;">${ev.event_type}</td>
+            <td style="color: var(--blue-ice); font-size: 10.5px;">${ev.event_type}</td>
             <td style="color: #cbd5e1;">${llm}</td>
             <td style="font-weight: 500; color: ${finalAction.includes('ESCALATE') ? 'var(--amber)' : '#fff'};">${finalAction}</td>
             <td>${statusBadge}</td>
@@ -802,7 +875,7 @@
       const invLabel = document.getElementById('inspect-inv-id');
 
       if (!ev) {
-        invLabel.innerText = '[NO DATA]';
+        invLabel.innerText = 'INVOICE · NO DATA';
         drawer.innerHTML = `
           <div class="empty-prompt">
             <span style="font-size: 20px;">⚡</span>
@@ -812,7 +885,7 @@
         return;
       }
 
-      invLabel.innerText = `INVOICE // ${ev.invoice_id}`;
+      invLabel.innerText = `INVOICE · ${ev.invoice_id}`;
 
       // Search paired events for the same invoice to build deep diff
       const related = rawEvents.filter(e => e.invoice_id === ev.invoice_id);
@@ -833,10 +906,10 @@
         html += `
           <div class="inspect-card">
             <div class="card-meta">
-              <span>01 // TELEMETRY INGESTION SNAPSHOT</span>
+              <span>01 · INGESTION SNAPSHOT</span>
               <span>${state.mandate_type ? state.mandate_type.toUpperCase() : 'MANDATE'}</span>
             </div>
-            <div class="code-block">Invoice ID : ${state.invoice_id}
+            <div class="code-container">Invoice ID : ${state.invoice_id}
 Customer   : ${state.customer_id || 'N/A'}
 Amount     : ₹${((state.plan_value_paise || 0) / 100).toFixed(2)}
 Attempt    : ${state.retry_count || 0} of ${state.max_retry_budget || 3} max
@@ -848,20 +921,21 @@ Status     : ${state.mandate_status || 'active'}</div>
 
       // 2. Neural Layer
       if (proposal) {
+        const proposalJson = {
+          intervention: proposal.intervention,
+          proposed_retry_ts: proposal.proposed_retry_ts || null,
+          proposed_incentive_pct: proposal.proposed_incentive_pct || null
+        };
         html += `
           <div class="inspect-card inspect-card--neural">
             <div class="card-meta">
-              <span>02 // NEURAL LAYER (CLAUDE 3.5 SONNET)</span>
+              <span>02 · NEURAL LAYER (CLAUDE 3.5 SONNET)</span>
               <span class="accent">[PROPOSAL]</span>
             </div>
             <div class="card-reasoning">
               "${proposal.reasoning || 'Heuristic revenue recovery strategy emitted.'}"
             </div>
-            <div class="code-block">{
-  "intervention": "${proposal.intervention}",
-  "proposed_retry_ts": ${proposal.proposed_retry_ts ? `"${proposal.proposed_retry_ts}"` : null},
-  "proposed_incentive_pct": ${proposal.proposed_incentive_pct || null}
-}</div>
+            <div class="code-container">${formatJsonWithHighlight(proposalJson)}</div>
           </div>
         `;
       }
@@ -869,16 +943,22 @@ Status     : ${state.mandate_status || 'active'}</div>
       // 3. Symbolic Layer (Guardrail Engine)
       if (verdict) {
         const isOverridden = verdict.was_overridden;
+        const verdictJson = {
+          final_intervention: verdict.final_intervention,
+          final_retry_ts: verdict.final_retry_ts || null,
+          final_incentive_pct: verdict.final_incentive_pct !== null ? verdict.final_incentive_pct : null,
+          was_overridden: verdict.was_overridden
+        };
         html += `
           <div class="inspect-card inspect-card--symbolic">
             <div class="card-meta">
-              <span>03 // SYMBOLIC COMPLIANCE FIREWALL</span>
+              <span>03 · SYMBOLIC COMPLIANCE FIREWALL</span>
               <span class="${isOverridden ? 'accent-amber' : 'accent-emerald'}">
                 ${isOverridden ? '[OVERRIDDEN / CLAMPED]' : '[PASSED_COMPLIANT]'}
               </span>
             </div>
             ${isOverridden ? `
-              <div style="font-family: var(--font-mono); font-size: 11px; color: var(--amber); background: var(--amber-glow); border: 1px solid var(--amber-border); padding: 6px 10px; border-radius: 2px;">
+              <div style="font-family: var(--font-mono); font-size: 11px; color: var(--amber); background: var(--amber-glow); border: 1px solid var(--amber-border); padding: 7px 11px; border-radius: 3px;">
                 POLICY TRIGGER: ${verdict.override_reason}
               </div>
             ` : `
@@ -886,25 +966,21 @@ Status     : ${state.mandate_status || 'active'}</div>
                 ✔ Verified against NPCI 3-attempt cap, 24h cooldown, and bank maintenance rules.
               </div>
             `}
-            <div class="code-block">{
-  "final_intervention": "${verdict.final_intervention}",
-  "final_retry_ts": ${verdict.final_retry_ts ? `"${verdict.final_retry_ts}"` : null},
-  "final_incentive_pct": ${verdict.final_incentive_pct !== null ? verdict.final_incentive_pct : null},
-  "was_overridden": ${verdict.was_overridden}
-}</div>
+            <div class="code-container">${formatJsonWithHighlight(verdictJson)}</div>
           </div>
         `;
       }
 
       // 4. Safe Execution Layer
       if (exec) {
+        const execPayload = exec.razorpay_call || exec.ops_alert || { action: exec.action_taken || "MOCKED_SAFE_DISPATCH" };
         html += `
           <div class="inspect-card inspect-card--execution">
             <div class="card-meta">
-              <span>04 // DISPATCHED SAFE EXECUTION</span>
+              <span>04 · DISPATCHED SAFE EXECUTION</span>
               <span class="accent-emerald">[MOCKED_RAZORPAY_API]</span>
             </div>
-            <div class="code-block">${JSON.stringify(exec.razorpay_call || exec.ops_alert || { action: exec.action_taken || "MOCKED_SAFE_DISPATCH" }, null, 2)}</div>
+            <div class="code-container">${formatJsonWithHighlight(execPayload)}</div>
           </div>
         `;
       }
