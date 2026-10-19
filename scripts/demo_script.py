@@ -34,6 +34,7 @@ from app.llm_orchestrator import propose_intervention_parallel
 from app.guardrail_engine import evaluate_proposal
 from app.executor import execute
 from app.state_store import default_state_store
+from app.vector_index import seed_history
 
 # ANSI terminal colors for presentation
 CYAN = "\033[96m"
@@ -117,6 +118,10 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     if proposal.proposed_incentive_pct:
         print(f"  * Proposed Discount: {proposal.proposed_incentive_pct}%")
     print(f"  * LLM Reasoning    : {CYAN}\"{proposal.reasoning}\"{RESET}")
+    cpy = agents.get("copy_agt")
+    if cpy and cpy.historical_context:
+        print(f"  * Retrieved History: {CYAN}{cpy.historical_context[0]}{RESET}")
+        print(f"  * Contextual Copy  : {CYAN}\"{cpy.customer_copy}\"{RESET}")
     print(f"  * Inference Latency: {elapsed:.2f}s")
     time.sleep(0.3)
 
@@ -178,6 +183,34 @@ def main():
     print_banner()
     
     scenarios = get_demo_scenarios()
+    scenarios["scenario_contextual_outreach"] = RecoveryState(
+        invoice_id="inv_ctx_007",
+        mandate_id="sub_ctx_card_707",
+        payment_id="pay_ctx_707",
+        transaction_id="txn_ctx_707",
+        customer_id="cust_context_007",
+        merchant_id="merch_saas_02",
+        plan_value_paise=249900,
+        currency="INR",
+        retry_count=1,
+        max_retry_budget=3,
+        last_attempt_ts=datetime(2026, 9, 3, 10, 0),
+        last_failure_reason="U30_INSUFFICIENT_FUNDS",
+        gateway_event="payment.failed",
+        gateway_name="universal",
+        mandate_status="active",
+        max_incentive_pct=5.0,
+    )
+    seed_history([
+        {
+            "customer_id": "cust_context_007",
+            "text": "Customer previously requested shifting the monthly billing date to the 10th after salary credit.",
+        },
+        {
+            "customer_id": "cust_context_007",
+            "text": "Customer prefers a short, respectful payment reminder without repeated notifications.",
+        },
+    ])
     total = len(scenarios)
     
     print(f"{BOLD}Initializing Tahsil State Store and loading {total} production-grade recurring payment failure scenarios...{RESET}\n")

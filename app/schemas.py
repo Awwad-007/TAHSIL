@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 from datetime import datetime
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 
 class MandateType(str, Enum):
     UPI_AUTOPAY = "upi_autopay"
@@ -77,6 +77,7 @@ class AgentResult(BaseModel):
     risk_score: Optional[float] = None
     liquidity_window_ok: Optional[bool] = None
     customer_copy: Optional[str] = None
+    historical_context: List[str] = Field(default_factory=list)
 
 class GuardrailVerdict(BaseModel):
     final_intervention: InterventionType

@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from app.schemas import AgentResult, RecoveryState, LLMProposal, InterventionType
+from app.vector_index import history_index
 
 load_dotenv()
 
@@ -210,19 +211,25 @@ def _schedule(state: RecoveryState) -> AgentResult:
 
 
 def _copy(state: RecoveryState) -> AgentResult:
+    hist = history_index.query(state.customer_id, state.last_failure_reason or "payment recovery")
     live = _live_agent("copy_agt", state)
     if live:
+        live.historical_context = hist
+        if hist and live.customer_copy:
+            live.customer_copy = f"{live.customer_copy} We also noted your earlier request: {hist[0]}"
         return live
     prop = _heuristic_propose(state)
-    msg = (
-        f"Hi, we noticed a temporary issue processing your subscription payment for invoice {state.invoice_id}. "
-        "We value your continued partnership and will help keep your service active."
-    )
+    msg = f"Hi, we noticed a temporary issue processing your subscription payment for invoice {state.invoice_id}."
+    if hist:
+        msg += f" We remember your earlier request: {hist[0]} We'll align the next billing attempt with that preference where possible."
+    else:
+        msg += " We value your continued partnership and will help keep your service active."
     return AgentResult(
         agent="copy_agt",
         proposed_incentive_pct=prop.proposed_incentive_pct,
         reasoning=prop.reasoning,
         customer_copy=msg,
+        historical_context=hist,
     )
 
 

@@ -5,6 +5,7 @@ from app import llm_orchestrator as orch
 from app.guardrail_engine import evaluate
 from app.schemas import AgentResult, InterventionType, LLMProposal, RecoveryState
 from app.state_store import StateStore
+from app.vector_index import seed_history
 
 
 def _state() -> RecoveryState:
@@ -107,3 +108,19 @@ def test_injected_astra_client_routes_all_agents_and_logs_named_events():
     assert [e.event_type for e in reversed(store.get_events())] == [
         "TRIAGE_AGENT_DONE", "SCHEDULE_AGENT_DONE", "COPY_AGENT_DONE"
     ]
+
+
+def test_copy_agent_uses_customer_history_context():
+    state = _state().model_copy(update={"customer_id": "cust_context_007"})
+    seed_history([{
+        "customer_id": "cust_context_007",
+        "text": "Customer previously requested shifting the billing date to the 10th after salary credit.",
+    }])
+    try:
+        res = asyncio.run(orch.copy_agt(state))
+    finally:
+        seed_history([])
+
+    assert res.historical_context
+    assert "billing date" in res.customer_copy.lower()
+    assert "10th" in res.customer_copy
