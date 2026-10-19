@@ -25,6 +25,10 @@ The result is a single FastAPI service with SQLite/WAL persistence, Pydantic V2 
 
 TAHSĪL is designed for SaaS, API platforms, marketplaces, and subscription businesses that need autonomous action around money without surrendering policy control.
 
+### Features
+
+- **Interactive WebGL Defense Terminal UI** with a responsive particle-drift operations background.
+
 | Business problem | Autonomous response | Safety boundary |
 |---|---|---|
 | Failed recurring debit | Predict, schedule, negotiate, notify, or escalate | Retry budgets, cooldowns, mandate checks, fraud triage, incentive caps, idempotency |

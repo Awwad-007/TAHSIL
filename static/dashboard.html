@@ -54,7 +54,7 @@
       width: 100%;
       height: 100vh;
       height: 100svh;
-      background-color: var(--bg);
+      background-color: #030509;
       color: var(--text);
       font-family: var(--font-display);
       -webkit-font-smoothing: antialiased;
@@ -70,7 +70,21 @@
       height: 100svh;
       padding: 14px 18px;
       gap: 12px;
-      background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.025) 0%, transparent 60%), #000;
+      position: relative;
+      z-index: 1;
+      background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.025) 0%, transparent 60%), transparent;
+    }
+
+    /* Ambient particle layer: fixed, decorative, and never interactive. */
+    .particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+      background: #030509;
     }
 
     /* 1. Header */
@@ -594,6 +608,8 @@
 </head>
 <body>
 
+  <canvas class="particle-canvas" data-particle-drift aria-hidden="true"></canvas>
+
   <div class="terminal-root">
     
     <!-- 1. Header -->
@@ -750,6 +766,103 @@
   </div>
 
   <script>
+    // Lightweight Canvas particle drift with a resilient, offline-safe fallback.
+    (function () {
+      const canvas = document.querySelector('[data-particle-drift]');
+      if (!canvas) return;
+      function startWebGL() {
+        const gl = canvas.getContext('webgl', { alpha: false, antialias: true });
+        if (!gl) return false;
+        const vs = 'attribute vec2 a_pos; attribute float a_lit; uniform vec2 u_size; uniform float u_dot; varying float v_lit; void main(){ gl_PointSize=u_dot; v_lit=a_lit; gl_Position=vec4(a_pos.x/u_size.x*2.0-1.0,1.0-a_pos.y/u_size.y*2.0,0.0,1.0); }';
+        const fs = 'precision mediump float; uniform vec3 u_base; uniform vec3 u_accent; uniform float u_alpha; varying float v_lit; void main(){ float d=length(gl_PointCoord-0.5)*2.0; float disc=1.0-smoothstep(0.72,1.0,d); float a=disc*mix(u_alpha,1.0,v_lit); if(a<0.004) discard; gl_FragColor=vec4(mix(u_base,u_accent,v_lit)*a,a); }';
+        const compile = (type, src) => { const sh=gl.createShader(type); gl.shaderSource(sh,src); gl.compileShader(sh); return gl.getShaderParameter(sh,gl.COMPILE_STATUS) ? sh : null; };
+        const pv=compile(gl.VERTEX_SHADER,vs), pf=compile(gl.FRAGMENT_SHADER,fs); if(!pv||!pf) return false;
+        const program=gl.createProgram(); gl.attachShader(program,pv); gl.attachShader(program,pf); gl.linkProgram(program); if(!gl.getProgramParameter(program,gl.LINK_STATUS)) return false;
+        const pos=gl.createBuffer(), lit=gl.createBuffer(), line=gl.createBuffer(); const aPos=gl.getAttribLocation(program,'a_pos'), aLit=gl.getAttribLocation(program,'a_lit'); const uSize=gl.getUniformLocation(program,'u_size'), uDot=gl.getUniformLocation(program,'u_dot'), uBase=gl.getUniformLocation(program,'u_base'), uAccent=gl.getUniformLocation(program,'u_accent'), uAlpha=gl.getUniformLocation(program,'u_alpha');
+        let ps=[], width=0, height=0, dpr=1, frame=0, running=!document.hidden, last=performance.now(); const pointer={x:0,y:0,active:false}, reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+        function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=width*dpr;canvas.height=height*dpr;gl.viewport(0,0,canvas.width,canvas.height);const n=Math.min(105,Math.max(34,Math.round(width*height/15500)));ps=Array.from({length:n},(_,i)=>ps[i]||{x:Math.random()*width,y:Math.random()*height,vx:(Math.random()-.5)*.16,vy:(Math.random()-.5)*.16,lit:Math.random(),phase:Math.random()*6.28});}
+        function draw(now){if(!running)return;const dt=Math.min(now-last,50);last=now;gl.clearColor(.012,.02,.035,1);gl.clear(gl.COLOR_BUFFER_BIT);const pts=[],lights=[],lines=[],max=Math.min(145,Math.max(90,width*.12));ps.forEach(p=>{if(!reduced.matches){p.x+=p.vx*dt;p.y+=p.vy*dt;p.phase+=dt*.0007;}if(p.x<-12)p.x=width+12;if(p.x>width+12)p.x=-12;if(p.y<-12)p.y=height+12;if(p.y>height+12)p.y=-12;if(pointer.active&&!reduced.matches){const dx=p.x-pointer.x,dy=p.y-pointer.y,dist=Math.hypot(dx,dy)||1;if(dist<150){p.x+=dx/dist*(1-dist/150)*.24;p.y+=dy/dist*(1-dist/150)*.24;}}pts.push(p.x,p.y);lights.push(.55+.45*Math.sin(p.phase));});for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length;j++){const a=ps[i],b=ps[j],dist=Math.hypot(a.x-b.x,a.y-b.y);if(dist<max)lines.push(a.x,a.y,b.x,b.y);}gl.useProgram(program);gl.uniform2f(uSize,width,height);gl.uniform1f(uDot,Math.max(2,dpr*3));gl.uniform3f(uBase,0,.35,.42);gl.uniform3f(uAccent,0,.9,1);gl.uniform1f(uAlpha,.45);gl.bindBuffer(gl.ARRAY_BUFFER,line);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lines),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(aPos);gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);gl.disableVertexAttribArray(aLit);gl.vertexAttrib1f(aLit,0);gl.uniform1f(uAlpha,.11);gl.drawArrays(gl.LINES,0,lines.length/2);gl.bindBuffer(gl.ARRAY_BUFFER,pos);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pts),gl.DYNAMIC_DRAW);gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(aLit);gl.bindBuffer(gl.ARRAY_BUFFER,lit);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lights),gl.DYNAMIC_DRAW);gl.vertexAttribPointer(aLit,1,gl.FLOAT,false,0,0);gl.uniform1f(uAlpha,.35);gl.drawArrays(gl.POINTS,0,ps.length);frame=requestAnimationFrame(draw);}
+        function run(v){running=v;if(v&&!frame){last=performance.now();frame=requestAnimationFrame(draw);}else if(!v&&frame){cancelAnimationFrame(frame);frame=0;}}
+        addEventListener('resize',resize,{passive:true});addEventListener('pointermove',e=>{pointer.x=e.clientX;pointer.y=e.clientY;pointer.active=true},{passive:true});addEventListener('pointerleave',()=>{pointer.active=false},{passive:true});document.addEventListener('visibilitychange',()=>run(!document.hidden));resize();run(!document.hidden);return true;
+      }
+      if (startWebGL()) return;
+      const context = canvas.getContext('2d', { alpha: false });
+      if (!context) return;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const pointer = { x: 0, y: 0, active: false };
+      let particles = [];
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let frame = 0;
+      let running = !document.hidden;
+      let lastTime = performance.now();
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const count = Math.min(105, Math.max(34, Math.round((width * height) / 15500)));
+        particles = Array.from({ length: count }, function (_, index) {
+          return particles[index] || {
+            x: Math.random() * width, y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.16, vy: (Math.random() - 0.5) * 0.16,
+            radius: 0.7 + Math.random() * 1.6, alpha: 0.25 + Math.random() * 0.55,
+            phase: Math.random() * Math.PI * 2
+          };
+        });
+      }
+
+      function draw(now) {
+        if (!running) return;
+        const elapsed = Math.min(now - lastTime, 50);
+        lastTime = now;
+        context.fillStyle = '#030509';
+        context.fillRect(0, 0, width, height);
+        const drift = reducedMotion.matches ? 0 : elapsed;
+        const maxDistance = Math.min(145, Math.max(90, width * 0.12));
+        particles.forEach(function (particle) {
+          if (drift) { particle.x += particle.vx * drift; particle.y += particle.vy * drift; particle.phase += drift * 0.0007; }
+          if (particle.x < -12) particle.x = width + 12;
+          if (particle.x > width + 12) particle.x = -12;
+          if (particle.y < -12) particle.y = height + 12;
+          if (particle.y > height + 12) particle.y = -12;
+          if (pointer.active && !reducedMotion.matches) {
+            const dx = particle.x - pointer.x; const dy = particle.y - pointer.y;
+            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+            if (distance < 150) { particle.x += (dx / distance) * (1 - distance / 150) * 0.24; particle.y += (dy / distance) * (1 - distance / 150) * 0.24; }
+          }
+          context.beginPath();
+          context.fillStyle = 'rgba(48, 211, 216, ' + (particle.alpha * (0.82 + Math.sin(particle.phase) * 0.18)).toFixed(3) + ')';
+          context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          context.fill();
+        });
+        for (let i = 0; i < particles.length; i += 1) for (let j = i + 1; j < particles.length; j += 1) {
+          const a = particles[i]; const b = particles[j]; const dx = a.x - b.x; const dy = a.y - b.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < maxDistance) {
+            context.beginPath(); context.strokeStyle = 'rgba(39, 190, 196, ' + ((1 - distance / maxDistance) * 0.16).toFixed(3) + ')';
+            context.lineWidth = 0.6; context.moveTo(a.x, a.y); context.lineTo(b.x, b.y); context.stroke();
+          }
+        }
+        frame = window.requestAnimationFrame(draw);
+      }
+
+      function setRunning(next) {
+        running = next;
+        if (running && !frame) { lastTime = performance.now(); frame = window.requestAnimationFrame(draw); }
+        else if (!running && frame) { window.cancelAnimationFrame(frame); frame = 0; }
+      }
+      window.addEventListener('resize', resize, { passive: true });
+      window.addEventListener('pointermove', function (event) { pointer.x = event.clientX; pointer.y = event.clientY; pointer.active = true; }, { passive: true });
+      window.addEventListener('pointerleave', function () { pointer.active = false; }, { passive: true });
+      document.addEventListener('visibilitychange', function () { setRunning(!document.hidden); });
+      resize(); setRunning(!document.hidden);
+    }());
+
     let rawEvents = [];
     let selectedEventId = null;
 
