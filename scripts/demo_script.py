@@ -259,6 +259,23 @@ def scenario_unbilled_trueup():
         default_state_store.log_true_up_invoice_generated(proposal, verdict=verdict.model_dump(mode="json"), cycle_id="2026-10")
 
 
+def scenario_proactive_upsell():
+    customer_id = "cust_upsell_011"
+    contract = ContractTier(
+        tier_name="Starter API", base_fee_paise=5_000, included_units=1_000,
+        overage_rate_paise=50, grace_units=100,
+    )
+    logs = [UsageRecord(
+        customer_id=customer_id, resource_name="api_calls", units_consumed=1_600,
+        recorded_at=datetime(2026, 10, 2),
+    )]
+    proposal = asyncio.run(audit_usage_leakage(customer_id, logs, contract))
+    print(f"\n{MAGENTA}{BOLD}[PROACTIVE UPSELL — HIGH API USAGE]{RESET}")
+    print(f"  * Unbilled Units    : {proposal.unbilled_units}")
+    print(f"  * Upgrade Proposed  : {GREEN if proposal.upsell_proposed else YELLOW}{proposal.upsell_proposed}{RESET}")
+    print(f"  * Customer Message  : {CYAN}{proposal.upsell_copy}{RESET}")
+
+
 def main():
     print_banner()
     
@@ -324,6 +341,7 @@ def main():
 
     scenario_interactive_negotiation()
     scenario_unbilled_trueup()
+    scenario_proactive_upsell()
 
     # Summary Telemetry
     metrics = default_state_store.get_metrics()

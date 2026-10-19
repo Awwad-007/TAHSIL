@@ -120,6 +120,8 @@ class TrueUpProposal(BaseModel):
     unbilled_units: int = Field(..., ge=0)
     overage_charge_paise: int = Field(..., ge=0)
     audit_reason: str
+    upsell_proposed: bool = False
+    upsell_copy: Optional[str] = None
 
 
 class TrueUpVerdict(BaseModel):
@@ -128,6 +130,8 @@ class TrueUpVerdict(BaseModel):
     unbilled_units: int = Field(..., ge=0)
     was_clamped: bool
     clamp_reason: Optional[str] = None
+    upsell_proposed: bool = False
+    upsell_copy: Optional[str] = None
 
 class NegotiationResult(BaseModel):
     agent: str = "negotiator_agt"

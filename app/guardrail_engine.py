@@ -140,6 +140,8 @@ def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id:
                 customer_id=proposal.customer_id, approved_charge_paise=0,
                 unbilled_units=proposal.unbilled_units, was_clamped=True,
                 clamp_reason="true-up already audited for current billing cycle",
+                upsell_proposed=proposal.upsell_proposed,
+                upsell_copy=proposal.upsell_copy,
             )
 
     final_amount = proposal.overage_charge_paise
@@ -157,10 +159,14 @@ def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id:
                 customer_id=proposal.customer_id, approved_charge_paise=0,
                 unbilled_units=proposal.unbilled_units, was_clamped=True,
                 clamp_reason="true-up already audited for current billing cycle",
+                upsell_proposed=proposal.upsell_proposed,
+                upsell_copy=proposal.upsell_copy,
             )
     return TrueUpVerdict(
         customer_id=proposal.customer_id, approved_charge_paise=final_amount,
         unbilled_units=proposal.unbilled_units, was_clamped=was_clamped,
         clamp_reason=reason,
+        upsell_proposed=proposal.upsell_proposed,
+        upsell_copy=proposal.upsell_copy,
     )
 

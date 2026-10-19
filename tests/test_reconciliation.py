@@ -35,6 +35,22 @@ def test_standard_usage_reconciliation():
     assert proposal.customer_id == "cust_usage_001"
 
 
+def test_proactive_upsell_is_proposed_for_high_usage_surplus():
+    proposal = asyncio.run(audit_usage_leakage(
+        "cust_usage_001", _logs(1_500), _contract(),
+    ))
+    assert proposal.upsell_proposed is True
+    assert "Upgrade" in proposal.upsell_copy
+
+
+def test_proactive_upsell_is_not_proposed_for_small_surplus():
+    proposal = asyncio.run(audit_usage_leakage(
+        "cust_usage_001", _logs(1_200), _contract(),
+    ))
+    assert proposal.upsell_proposed is False
+    assert proposal.upsell_copy is None
+
+
 def test_rule8_clamps_true_up_surge_to_150_percent_of_base_fee():
     store = StateStore(":memory:")
     contract = _contract(base_fee_paise=10_000, overage_rate_paise=100)
