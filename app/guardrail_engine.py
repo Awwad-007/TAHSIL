@@ -130,8 +130,9 @@ def evaluate(state: RecoveryState, proposal: Optional[LLMProposal] = None, state
 evaluate_proposal = evaluate
 
 
-def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id: str, state_store: Optional[object] = None, store: Optional[object] = None) -> TrueUpVerdict:
+def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id: Optional[str] = None, state_store: Optional[object] = None, store: Optional[object] = None) -> TrueUpVerdict:
     """Apply Rule 8's charge ceiling and Rule 9's cycle idempotency."""
+    cycle_id = cycle_id or datetime.now().strftime("%Y-%m")
     db_store = store or state_store
     if db_store is not None and hasattr(db_store, "is_true_up_audited"):
         if db_store.is_true_up_audited(proposal.customer_id, cycle_id):
