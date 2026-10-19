@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="app/static/banner.png" alt="TAHSĪL — OmniRush Agentic Buildathon 2026" width="100%" />
+</p>
+
+<p align="center"><strong>OmniRush Agentic Buildathon 2026 · Dual-Core Autonomous Revenue Assurance Engine</strong></p>
+
 # TAHSĪL
 
 ## Dual-Core Autonomous Revenue Assurance Engine
@@ -359,6 +365,7 @@ The container starts FastAPI with Uvicorn on `0.0.0.0:8000`. Set the optional mo
 ```text
 TAHSIL/
 ├── app/
+│   ├── static/banner.png    # OmniRush Agentic Buildathon 2026 header visual
 │   ├── main.py              # FastAPI API and pipeline entry points
 │   ├── schemas.py           # Pydantic V2 contracts and webhook normalization
 │   ├── llm_orchestrator.py  # Concurrent Churn Rescue agent swarm
