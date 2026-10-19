@@ -1,23 +1,26 @@
+import asyncio
 import os
 from datetime import datetime, timedelta
-import json
-from typing import Optional
+from typing import Dict, Tuple
 from dotenv import load_dotenv
 from anthropic import Anthropic
-from app.schemas import RecoveryState, LLMProposal, InterventionType
+from app.schemas import AgentResult, RecoveryState, LLMProposal, InterventionType
 
 load_dotenv()
 
-SYSTEM_PROMPT = """You are Tahsīl's AI Revenue Recovery Case-Worker Agent.
-Your job is to analyze telemetry from a failed recurring subscription payment (UPI AutoPay, eNACH, or Card) and propose the single most effective recovery intervention from:
-- RETRY_AT: Schedule a retry attempt at an optimal timestamp (e.g., within liquidity windows, or after payment failure cooldown).
-- SEND_PAYMENT_LINK: Issue an instant one-click payment link (optionally with an incentive/discount percentage) if direct debit has friction.
-- PAUSE_MANDATE: Temporarily pause the mandate to prevent repeated hard declines.
-- ESCALATE_TO_HUMAN: Escalate to merchant operations or relationship managers.
-- DO_NOTHING: No action required (e.g., mandate permanently dead or unrecoverable).
+SYSTEM_PROMPT = """You are Tahsīl's Autonomous AI Revenue Recovery Agent.
+Your mission is to analyze telemetry from a failed recurring subscription payment across global payment rails (Cards, UPI AutoPay, eNACH, ACH, SEPA, and Direct Debit) and propose the single most effective recovery intervention from:
+- RETRY_AT: Schedule a retry attempt at an optimal timestamp (e.g., within customer liquidity windows, or after payment rail cooldown).
+- SEND_PAYMENT_LINK: Issue an instant one-click direct recovery link (optionally with an empathetic incentive/discount percentage) if automated debit encounters friction.
+- PAUSE_MANDATE: Temporarily pause the subscription/mandate to prevent hard declines, bank fees, and customer friction.
+- ESCALATE_TO_HUMAN: Escalate to merchant operations or relationship managers when automated recovery is exhausted.
+- DO_NOTHING: No action required (e.g., mandate permanently revoked or unrecoverable).
 
-Provide a concise, 1-sentence reasoning justifying your recommendation.
-NOTE: You do NOT need to enforce regulatory rules or compliance limits (such as NPCI retry caps, bank maintenance windows, or merchant discount caps) — an independent, deterministic downstream compliance engine validates and enforces all hard rules. Reason freely about the best recovery strategy."""
+Tone & Strategy Guidelines:
+- Prioritize customer empathy and retention. Ensure recommendations are professional, empathetic, and respectful of customer relationships regardless of the underlying payment gateway.
+- Provide a concise, 1-sentence reasoning justifying your recommendation.
+- NOTE: You do NOT need to enforce regulatory rules or compliance limits (such as network retry caps, maintenance blackout windows, or merchant discount caps) — an independent, deterministic downstream guardrail firewall validates and enforces all hard rules. Reason freely about the best recovery strategy."""
+
 
 TOOL_SCHEMA = {
     "name": "propose_recovery_action",
@@ -123,3 +126,91 @@ def propose_intervention(state: RecoveryState) -> LLMProposal:
     except Exception as e:
         print(f"[LLM Orchestrator Warning] Live API call failed: {e}. Using fallback reasoner.")
         return _heuristic_propose(state)
+
+
+def _risk_score(state: RecoveryState) -> float:
+    score = 0.25
+    if state.retry_count >= state.max_retry_budget:
+        score += 0.55
+    elif state.retry_count:
+        score += 0.15
+    if state.mandate_status != "active":
+        score += 0.25
+    if state.plan_value_paise > 100000:
+        score += 0.10
+    return min(round(score, 2), 1.0)
+
+
+def _triage(state: RecoveryState) -> AgentResult:
+    prop = _heuristic_propose(state)
+    return AgentResult(
+        agent="triage_agt",
+        intervention=prop.intervention,
+        reasoning=prop.reasoning,
+        risk_score=_risk_score(state),
+    )
+
+
+def _schedule(state: RecoveryState) -> AgentResult:
+    prop = _heuristic_propose(state)
+    retry_ts = prop.proposed_retry_ts if prop.intervention == InterventionType.RETRY_AT else None
+    ok = True
+    if retry_ts and state.predicted_liquidity_window_start and state.predicted_liquidity_window_end:
+        ok = state.predicted_liquidity_window_start <= retry_ts <= state.predicted_liquidity_window_end
+    return AgentResult(
+        agent="schedule_agt",
+        proposed_retry_ts=retry_ts,
+        reasoning="Retry timing checked against the customer liquidity window and payment-rail cooldown.",
+        liquidity_window_ok=ok,
+    )
+
+
+def _copy(state: RecoveryState) -> AgentResult:
+    prop = _heuristic_propose(state)
+    msg = (
+        f"Hi, we noticed a temporary issue processing your subscription payment for invoice {state.invoice_id}. "
+        "We value your continued partnership and will help keep your service active."
+    )
+    return AgentResult(
+        agent="copy_agt",
+        proposed_incentive_pct=prop.proposed_incentive_pct,
+        reasoning=prop.reasoning,
+        customer_copy=msg,
+    )
+
+
+async def triage_agt(state: RecoveryState) -> AgentResult:
+    return await asyncio.to_thread(_triage, state)
+
+
+async def schedule_agt(state: RecoveryState) -> AgentResult:
+    return await asyncio.to_thread(_schedule, state)
+
+
+async def copy_agt(state: RecoveryState) -> AgentResult:
+    return await asyncio.to_thread(_copy, state)
+
+
+def _merge(tri: AgentResult, sch: AgentResult, cpy: AgentResult) -> LLMProposal:
+    action = tri.intervention or InterventionType.DO_NOTHING
+    retry_ts = sch.proposed_retry_ts if action == InterventionType.RETRY_AT else None
+    reasoning = cpy.reasoning or tri.reasoning or sch.reasoning
+    return LLMProposal(
+        intervention=action,
+        proposed_retry_ts=retry_ts,
+        proposed_incentive_pct=cpy.proposed_incentive_pct if action == InterventionType.SEND_PAYMENT_LINK else None,
+        reasoning=reasoning,
+        customer_copy=cpy.customer_copy,
+    )
+
+
+async def propose_intervention_parallel(
+    state: RecoveryState,
+) -> Tuple[LLMProposal, Dict[str, AgentResult]]:
+    tri, sch, cpy = await asyncio.gather(
+        triage_agt(state),
+        schedule_agt(state),
+        copy_agt(state),
+    )
+    out = {r.agent: r for r in (tri, sch, cpy)}
+    return _merge(tri, sch, cpy), out
