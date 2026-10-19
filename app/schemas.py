@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 from datetime import datetime
-from typing import Optional, Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List, Literal
+
+RiskLevel = Literal["LOW", "MED", "HIGH"]
 
 class MandateType(str, Enum):
     UPI_AUTOPAY = "upi_autopay"
@@ -39,6 +41,8 @@ class RecoveryState(BaseModel):
     bank_downtime_forecast: Optional[str] = None
     mandate_status: str = "active"
     max_incentive_pct: float = 5.0
+    anomaly_flags: List[str] = Field(default_factory=list)
+    risk_level: RiskLevel = "LOW"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
@@ -78,6 +82,8 @@ class AgentResult(BaseModel):
     liquidity_window_ok: Optional[bool] = None
     customer_copy: Optional[str] = None
     historical_context: List[str] = Field(default_factory=list)
+    anomaly_flags: List[str] = Field(default_factory=list)
+    risk_level: RiskLevel = "LOW"
 
 class CustomerReply(BaseModel):
     invoice_id: str

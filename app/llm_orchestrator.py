@@ -223,6 +223,27 @@ def _risk_score(state: RecoveryState) -> float:
     return min(round(score, 2), 1.0)
 
 
+def assess_anomalies(state: RecoveryState) -> Tuple[list[str], str, float]:
+    md = state.metadata or {}
+    flags = []
+    hist = md.get("decline_history", [])
+    if isinstance(hist, list) and len(hist) >= 3:
+        flags.append("DECLINE_FREQUENCY_HIGH")
+    ip = str(md.get("ip_country", "")).strip().upper()
+    card = str(md.get("card_country", md.get("card_rail_country", ""))).strip().upper()
+    if ip and card and ip != card:
+        flags.append("IP_CARD_RAIL_MISMATCH")
+    try:
+        micro = int(md.get("micro_charge_failures", 0))
+    except (TypeError, ValueError):
+        micro = 0
+    if micro > 0:
+        flags.append("MICRO_CHARGE_FAILURE")
+    score = min(1.0, _risk_score(state) + min(0.25, len(flags) * 0.10))
+    level = "HIGH" if flags else "MED" if score >= 0.5 else "LOW"
+    return flags, level, round(score, 2)
+
+
 def _live_agent(name: str, state: RecoveryState) -> Optional[AgentResult]:
     if _model_client is not None:
         try:
@@ -254,15 +275,27 @@ def _live_agent(name: str, state: RecoveryState) -> Optional[AgentResult]:
 
 
 def _triage(state: RecoveryState) -> AgentResult:
+    flags, level, score = assess_anomalies(state)
     live = _live_agent("triage_agt", state)
     if live:
+        live.anomaly_flags = flags
+        live.risk_level = level
+        live.risk_score = score
+        if level == "HIGH":
+            live.intervention = InterventionType.ESCALATE_TO_HUMAN
+            live.reasoning = "High-risk payment anomaly detected; automated recovery is blocked and routed to human operations."
         return live
     prop = _heuristic_propose(state)
+    if level == "HIGH":
+        prop.intervention = InterventionType.ESCALATE_TO_HUMAN
+        prop.reasoning = "High-risk payment anomaly detected; automated recovery is blocked and routed to human operations."
     return AgentResult(
         agent="triage_agt",
         intervention=prop.intervention,
         reasoning=prop.reasoning,
-        risk_score=_risk_score(state),
+        risk_score=score,
+        anomaly_flags=flags,
+        risk_level=level,
     )
 
 
@@ -321,7 +354,7 @@ async def copy_agt(state: RecoveryState) -> AgentResult:
 def _merge(tri: AgentResult, sch: AgentResult, cpy: AgentResult) -> LLMProposal:
     action = tri.intervention or InterventionType.DO_NOTHING
     retry_ts = sch.proposed_retry_ts if action == InterventionType.RETRY_AT else None
-    reasoning = cpy.reasoning or tri.reasoning or sch.reasoning
+    reasoning = tri.reasoning if tri.risk_level == "HIGH" else (cpy.reasoning or tri.reasoning or sch.reasoning)
     return LLMProposal(
         intervention=action,
         proposed_retry_ts=retry_ts,

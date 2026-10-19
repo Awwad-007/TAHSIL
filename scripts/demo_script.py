@@ -30,10 +30,11 @@ import time
 from datetime import datetime
 from app.schemas import CustomerReply, RecoveryState, InterventionType
 from app.simulator import get_demo_scenarios
-from app.llm_orchestrator import negotiator_agt, propose_intervention_parallel
+from app.llm_orchestrator import assess_anomalies, negotiator_agt, propose_intervention_parallel
 from app.guardrail_engine import evaluate_proposal
 from app.executor import execute
 from app.state_store import default_state_store
+from app.channels.dispatcher import dispatch_recovery_notice
 from app.vector_index import seed_history
 
 # ANSI terminal colors for presentation
@@ -66,6 +67,8 @@ def format_inr(paise: int) -> str:
 
 
 def run_scenario(name: str, state: RecoveryState, index: int, total: int):
+    flags, level, _score = assess_anomalies(state)
+    state = state.model_copy(update={"anomaly_flags": flags, "risk_level": level})
     print(f"\n{BOLD}{'='*80}{RESET}")
     print(f"{BLUE}{BOLD}>> SCENARIO {index}/{total}: {name.upper()}{RESET}")
     print(f"{BOLD}{'='*80}{RESET}")
@@ -80,6 +83,9 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     print(f"  * Amount at Risk   : {BOLD}{format_inr(state.plan_value_paise)}{RESET}")
     print(f"  * Retry Attempt    : {state.retry_count} of {state.max_retry_budget} max budget")
     print(f"  * Last Failure     : {YELLOW}{state.last_failure_reason or 'None'}{RESET}")
+    if state.anomaly_flags:
+        print(f"  * Risk Level       : {RED}{BOLD}{state.risk_level}{RESET}")
+        print(f"  * Anomaly Flags    : {RED}{', '.join(state.anomaly_flags)}{RESET}")
     if state.predicted_liquidity_window_start:
         print(f"  * Liquidity Window : {GREEN}{state.predicted_liquidity_window_start.strftime('%d %b %H:%M')} - {state.predicted_liquidity_window_end.strftime('%H:%M')}{RESET}")
     if state.bank_downtime_forecast:
@@ -161,6 +167,14 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     # 4. Mocked Execution
     print(f"\n{GREEN}{BOLD}[4. SAFE DISPATCH — UNIVERSAL GATEWAY EXECUTOR & AUDIT]{RESET}")
     exec_result = execute(verdict, state, store=default_state_store)
+    notes = asyncio.run(dispatch_recovery_notice(
+        state,
+        verdict,
+        verdict.original_proposal.customer_copy or verdict.original_proposal.reasoning,
+        default_state_store,
+    ))
+    if notes:
+        print(f"  * Notice Channels  : {GREEN}{', '.join(notes)}{RESET}")
     
     call = exec_result.get("gateway_call")
     if call:
@@ -241,6 +255,29 @@ def main():
         gateway_name="universal",
         mandate_status="active",
         max_incentive_pct=5.0,
+    )
+    scenarios["scenario_fraud_escalation"] = RecoveryState(
+        invoice_id="inv_fraud_009",
+        mandate_id="sub_fraud_card_909",
+        payment_id="pay_fraud_909",
+        transaction_id="txn_fraud_909",
+        customer_id="cust_fraud_009",
+        merchant_id="merch_global_04",
+        plan_value_paise=75000,
+        currency="INR",
+        retry_count=1,
+        max_retry_budget=3,
+        last_attempt_ts=datetime(2026, 9, 4, 10, 0),
+        last_failure_reason="CARD_DECLINED",
+        gateway_event="payment.failed",
+        gateway_name="stripe",
+        mandate_status="active",
+        metadata={
+            "decline_history": [{"reason": "CARD_DECLINED"}] * 3,
+            "ip_country": "IN",
+            "card_country": "US",
+            "micro_charge_failures": 1,
+        },
     )
     seed_history([
         {

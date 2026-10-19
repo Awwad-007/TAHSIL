@@ -128,6 +128,13 @@ class StateStore:
             payload=result.model_dump(mode="json"),
         )
 
+    def log_dispatch_channel(self, invoice_id: str, payload: Dict[str, Any]) -> RecoveryEvent:
+        return self.log_event(
+            invoice_id=invoice_id,
+            event_type="DISPATCH_CHANNEL_SENT",
+            payload=payload,
+        )
+
     def get_events(self, invoice_id: Optional[str] = None, limit: int = 100) -> List[RecoveryEvent]:
         conn = self._get_conn()
         if invoice_id:

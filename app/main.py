@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from app.schemas import CustomerReply, RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, normalize_gateway_payload
 from app.state_store import default_state_store
 from app.guardrail_engine import evaluate
-from app.llm_orchestrator import negotiator_agt, propose_intervention_parallel
+from app.llm_orchestrator import assess_anomalies, negotiator_agt, propose_intervention_parallel
 from app.executor import execute
+from app.channels.dispatcher import dispatch_recovery_notice
 from app.simulator import get_demo_scenarios, get_scenario
 
 app = FastAPI(
@@ -85,6 +86,8 @@ def list_scenarios():
     }
 
 async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
+    flags, level, _score = assess_anomalies(state)
+    state = state.model_copy(update={"anomaly_flags": flags, "risk_level": level})
     default_state_store.save_state(state)
     default_state_store.log_event(
         invoice_id=state.invoice_id,
@@ -110,6 +113,8 @@ async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
         payload={"verdict": verdict.model_dump(mode="json")}
     )
     execution_res = execute(verdict, state, default_state_store)
+    copy_text = verdict.original_proposal.customer_copy or verdict.original_proposal.reasoning
+    channels = await dispatch_recovery_notice(state, verdict, copy_text, default_state_store)
     return {
         "invoice_id": state.invoice_id,
         "payment_id": state.payment_id,
@@ -119,7 +124,8 @@ async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
         "proposal": proposal.model_dump(mode="json"),
         "agents": {name: result.model_dump(mode="json") for name, result in agents.items()},
         "verdict": verdict.model_dump(mode="json"),
-        "execution": execution_res
+        "execution": execution_res,
+        "channels": channels,
     }
 
 @app.post("/api/webhook/payment-failed")

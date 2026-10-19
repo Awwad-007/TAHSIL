@@ -42,6 +42,18 @@ def evaluate(state: RecoveryState, proposal: LLMProposal, state_store: Optional[
                 original_proposal=proposal
             )
 
+    # Fraud/anomaly firewall: high-risk cases never enter automated recovery.
+    if state.risk_level == "HIGH":
+        flags = ", ".join(state.anomaly_flags) or "unclassified anomaly"
+        return GuardrailVerdict(
+            final_intervention=InterventionType.ESCALATE_TO_HUMAN,
+            final_retry_ts=None,
+            final_incentive_pct=None,
+            was_overridden=True,
+            override_reason=f"high-risk anomaly escalation: {flags}",
+            original_proposal=proposal,
+        )
+
     # Rule 2: Retry budget cap
     if proposal.intervention == InterventionType.RETRY_AT:
         if state.retry_count >= state.max_retry_budget:
@@ -50,7 +62,7 @@ def evaluate(state: RecoveryState, proposal: LLMProposal, state_store: Optional[
                 final_retry_ts=None,
                 final_incentive_pct=None,
                 was_overridden=True,
-                override_reason=f"NPCI retry budget exhausted (attempted {state.retry_count} of max {state.max_retry_budget})",
+                override_reason=f"Network retry budget exhausted (attempted {state.retry_count} of max {state.max_retry_budget})",
                 original_proposal=proposal
             )
 
@@ -64,7 +76,8 @@ def evaluate(state: RecoveryState, proposal: LLMProposal, state_store: Optional[
         if proposal.proposed_retry_ts < min_allowed_ts:
             final_retry_ts = min_allowed_ts
             was_overridden_cooldown = True
-            cooldown_reason = "enforced 24h NPCI cooldown"
+            cooldown_reason = "enforced 24h network cooldown"
+
 
     # Rule 4: Bank downtime collision
     was_overridden_downtime = False
