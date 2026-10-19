@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-from app.schemas import AgentResult, RecoveryState, RecoveryEvent
+from app.schemas import AgentResult, RecoveryState, RecoveryEvent, TrueUpProposal
 
 DEFAULT_DB_PATH = Path("tahsil.db")
 
@@ -50,6 +50,14 @@ class StateStore:
                 status TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 PRIMARY KEY (invoice_id, retry_count)
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS true_up_locks (
+                customer_id TEXT NOT NULL,
+                cycle_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (customer_id, cycle_id)
             );
         """)
         conn.commit()
@@ -134,6 +142,42 @@ class StateStore:
             event_type="DISPATCH_CHANNEL_SENT",
             payload=payload,
         )
+
+    def log_true_up_audited(self, proposal: TrueUpProposal, cycle_id: str = "current") -> RecoveryEvent:
+        return self.log_event(
+            invoice_id=f"true_up:{proposal.customer_id}:{cycle_id}",
+            event_type="TRUE_UP_AUDITED",
+            payload={"proposal": proposal.model_dump(mode="json")},
+        )
+
+    def log_true_up_invoice_generated(self, proposal: TrueUpProposal, verdict: Optional[Dict[str, Any]] = None, cycle_id: str = "current") -> RecoveryEvent:
+        payload = {"proposal": proposal.model_dump(mode="json")}
+        if verdict is not None:
+            payload["verdict"] = verdict
+        return self.log_event(
+            invoice_id=f"true_up:{proposal.customer_id}:{cycle_id}",
+            event_type="TRUE_UP_INVOICE_GENERATED",
+            payload=payload,
+        )
+
+    def is_true_up_audited(self, customer_id: str, cycle_id: str) -> bool:
+        row = self._get_conn().execute(
+            """SELECT 1 FROM recovery_events
+               WHERE invoice_id = ? AND event_type = 'TRUE_UP_INVOICE_GENERATED'""",
+            (f"true_up:{customer_id}:{cycle_id}",),
+        ).fetchone()
+        return row is not None
+
+    def acquire_true_up_cycle(self, customer_id: str, cycle_id: str) -> bool:
+        try:
+            self._get_conn().execute(
+                "INSERT INTO true_up_locks (customer_id, cycle_id, created_at) VALUES (?, ?, ?)",
+                (customer_id, cycle_id, datetime.now().isoformat()),
+            )
+            self._get_conn().commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
 
     def get_events(self, invoice_id: Optional[str] = None, limit: int = 100) -> List[RecoveryEvent]:
         conn = self._get_conn()
@@ -243,6 +287,7 @@ class StateStore:
         conn.execute("DELETE FROM recovery_states;")
         conn.execute("DELETE FROM recovery_events;")
         conn.execute("DELETE FROM idempotency_locks;")
+        conn.execute("DELETE FROM true_up_locks;")
         conn.commit()
 
 default_state_store = StateStore()

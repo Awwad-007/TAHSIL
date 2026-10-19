@@ -50,7 +50,7 @@ The demo and tests use the heuristic path when `ANTHROPIC_API_KEY` is absent. To
 
 **Tahsīl (تحصيل)** solves this with a **Neuro-Symbolic Hybrid Architecture**:
 * **The Neural Layer (LLM Proposer)** uses Claude 3.5 Sonnet (with built-in heuristic fallback) to ingest rich transaction telemetry (gateway failure codes, customer LTV, salary liquidity windows, bank downtime forecasts) and reason through the optimal recovery strategy.
-* **The Symbolic Layer (Deterministic Guardrail Engine)** acts as an unbreachable Python firewall. **The LLM never executes directly.** Every proposal must pass 7 strict priority rules enforcing retry attempt caps, 24-hour mandatory cooldowns, bank maintenance blackout shifts, and merchant discount caps.
+* **The Symbolic Layer (Deterministic Guardrail Engine)** acts as an unbreachable Python firewall. **The LLM never executes directly.** Recovery proposals pass 7 strict rules; metered usage true-ups add Rule 8's 150% surge ceiling and Rule 9's current-cycle invoice idempotency.
 * **The Execution Layer** safely logs and dispatches platform-agnostic REST payloads (`/v1/payments/{id}/retry`, `/v1/payment_links`, `/v1/subscriptions/{id}/pause`), formats empathetic customer recovery messages, and alerts merchant operations queues.
 
 ```
@@ -159,6 +159,12 @@ Rule 6: Atomic Idempotency Lock
 
 Rule 7: Policy Pass-Through
    └─ IF all compliance rules satisfied ➔ EMIT proposal as-is
+
+Rule 8: True-Up Surge Ceiling
+   └─ IF proposed usage charge > 150% of base fee ➔ CLAMP to 150% of base fee
+
+Rule 9: Idempotent Audit Ledger
+   └─ IF a true-up invoice exists for the customer in the current cycle ➔ DO_NOTHING
 ```
 
 ---
@@ -271,6 +277,7 @@ uvicorn app.main:app --reload
 | `GET` | `/health` | Healthcheck and service metadata |
 | `POST` | `/api/webhook/ingest` | Universal webhook ingestion (Stripe, Razorpay, Adyen, PayPal, generic) |
 | `POST` | `/api/webhook/payment-failed` | Ingests recurring payment failure event and runs the neuro-symbolic pipeline |
+| `POST` | `/api/audit/usage-leakage` | Audits metered usage and generates a guarded true-up verdict |
 | `GET` | `/api/metrics` | Returns live telemetry stats (total volume, recovered revenue, recovery rate, overrides) |
 | `GET` | `/api/events` | Chronological audit trail of all webhook, LLM, guardrail, and execution events |
 | `GET` | `/api/states` | Returns latest recovery state for all active subscriptions |

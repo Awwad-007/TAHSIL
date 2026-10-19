@@ -99,6 +99,36 @@ class GuardrailVerdict(BaseModel):
     override_reason: Optional[str] = None
     original_proposal: LLMProposal
 
+
+class UsageRecord(BaseModel):
+    customer_id: str
+    resource_name: str
+    units_consumed: int = Field(..., ge=0)
+    recorded_at: datetime
+
+
+class ContractTier(BaseModel):
+    tier_name: str
+    base_fee_paise: int = Field(..., ge=0)
+    included_units: int = Field(..., ge=0)
+    overage_rate_paise: int = Field(..., ge=0)
+    grace_units: int = Field(..., ge=0)
+
+
+class TrueUpProposal(BaseModel):
+    customer_id: str
+    unbilled_units: int = Field(..., ge=0)
+    overage_charge_paise: int = Field(..., ge=0)
+    audit_reason: str
+
+
+class TrueUpVerdict(BaseModel):
+    customer_id: str
+    approved_charge_paise: int = Field(..., ge=0)
+    unbilled_units: int = Field(..., ge=0)
+    was_clamped: bool
+    clamp_reason: Optional[str] = None
+
 class NegotiationResult(BaseModel):
     agent: str = "negotiator_agt"
     requested_retry_ts: Optional[datetime] = None

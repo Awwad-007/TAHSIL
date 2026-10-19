@@ -28,7 +28,7 @@ except Exception:
 import asyncio
 import time
 from datetime import datetime
-from app.schemas import CustomerReply, RecoveryState, InterventionType
+from app.schemas import CustomerReply, RecoveryState, InterventionType, ContractTier, UsageRecord
 from app.simulator import get_demo_scenarios
 from app.llm_orchestrator import assess_anomalies, negotiator_agt, propose_intervention_parallel
 from app.guardrail_engine import evaluate_proposal
@@ -36,6 +36,8 @@ from app.executor import execute
 from app.state_store import default_state_store
 from app.channels.dispatcher import dispatch_recovery_notice
 from app.vector_index import seed_history
+from app.reconcile_agt import audit_usage_leakage
+from app.guardrail_engine import evaluate_true_up
 
 # ANSI terminal colors for presentation
 CYAN = "\033[96m"
@@ -234,6 +236,29 @@ def scenario_interactive_negotiation():
     print(f"  Response          : {CYAN}{res.response}{RESET}")
 
 
+def scenario_unbilled_trueup():
+    """Show quota leakage being reconciled and safely capped."""
+    customer_id = "cust_api_quota_010"
+    contract = ContractTier(
+        tier_name="API Pro", base_fee_paise=10_000, included_units=1_000,
+        overage_rate_paise=100, grace_units=100,
+    )
+    logs = [UsageRecord(
+        customer_id=customer_id, resource_name="api_calls", units_consumed=2_000,
+        recorded_at=datetime(2026, 10, 1),
+    )]
+    proposal = asyncio.run(audit_usage_leakage(customer_id, logs, contract))
+    verdict = evaluate_true_up(proposal, contract, "2026-10", store=default_state_store)
+    print(f"\n{MAGENTA}{BOLD}[UNBILLED USAGE TRUE-UP — API QUOTA LEAKAGE]{RESET}")
+    print(f"  * Usage Audited    : {proposal.unbilled_units} unbilled API units")
+    print(f"  * Raw Overage Fee  : {format_inr(proposal.overage_charge_paise)}")
+    print(f"  * Approved Charge  : {format_inr(verdict.approved_charge_paise)}")
+    print(f"  * Rule 8 Result    : {YELLOW if verdict.was_clamped else GREEN}{verdict.clamp_reason or 'No clamp required'}{RESET}")
+    default_state_store.log_true_up_audited(proposal, cycle_id="2026-10")
+    if verdict.approved_charge_paise:
+        default_state_store.log_true_up_invoice_generated(proposal, verdict=verdict.model_dump(mode="json"), cycle_id="2026-10")
+
+
 def main():
     print_banner()
     
@@ -298,6 +323,7 @@ def main():
         run_scenario(name, state, idx, total)
 
     scenario_interactive_negotiation()
+    scenario_unbilled_trueup()
 
     # Summary Telemetry
     metrics = default_state_store.get_metrics()

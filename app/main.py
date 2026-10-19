@@ -7,9 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app.schemas import CustomerReply, RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, normalize_gateway_payload
+from app.schemas import CustomerReply, RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, UsageRecord, ContractTier, TrueUpVerdict, normalize_gateway_payload
 from app.state_store import default_state_store
-from app.guardrail_engine import evaluate
+from app.guardrail_engine import evaluate, evaluate_true_up
+from app.reconcile_agt import audit_usage_leakage
 from app.llm_orchestrator import assess_anomalies, negotiator_agt, propose_intervention_parallel
 from app.executor import execute
 from app.channels.dispatcher import dispatch_recovery_notice
@@ -31,6 +32,12 @@ app.add_middleware(
 
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+class UsageLeakageRequest(BaseModel):
+    customer_id: str
+    raw_usage_logs: List[UsageRecord]
+    contract: ContractTier
 
 @app.get("/health")
 def health():
@@ -134,6 +141,19 @@ async def webhook_payment_failed(payload: Dict[str, Any]):
     state = normalize_gateway_payload(payload)
     result = await process_recovery_pipeline(state)
     return {"status": "success", "data": result}
+
+
+@app.post("/api/audit/usage-leakage", response_model=TrueUpVerdict)
+async def audit_usage_leakage_endpoint(request: UsageLeakageRequest):
+    """Audit metered usage, apply true-up guardrails, and write the invoice ledger."""
+    proposal = await audit_usage_leakage(request.customer_id, request.raw_usage_logs, request.contract)
+    cycle_id = datetime.now().strftime("%Y-%m")
+    verdict = evaluate_true_up(proposal, request.contract, cycle_id, store=default_state_store)
+    if verdict.clamp_reason != "true-up already audited for current billing cycle":
+        default_state_store.log_true_up_audited(proposal, cycle_id=cycle_id)
+        if verdict.approved_charge_paise:
+            default_state_store.log_true_up_invoice_generated(proposal, verdict=verdict.model_dump(mode="json"), cycle_id=cycle_id)
+    return verdict
 
 
 @app.post("/api/webhook/reply")

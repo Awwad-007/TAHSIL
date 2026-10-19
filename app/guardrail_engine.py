@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import re
 from typing import Optional, Tuple
-from app.schemas import RecoveryState, LLMProposal, GuardrailVerdict, InterventionType
+from app.schemas import RecoveryState, LLMProposal, GuardrailVerdict, InterventionType, TrueUpProposal, TrueUpVerdict, ContractTier
 
 def parse_downtime_window(forecast_str: Optional[str]) -> Optional[Tuple[datetime, datetime]]:
     if not forecast_str:
@@ -17,7 +17,9 @@ def parse_downtime_window(forecast_str: Optional[str]) -> Optional[Tuple[datetim
             pass
     return None
 
-def evaluate(state: RecoveryState, proposal: LLMProposal, state_store: Optional[object] = None, store: Optional[object] = None) -> GuardrailVerdict:
+def evaluate(state: RecoveryState, proposal: Optional[LLMProposal] = None, state_store: Optional[object] = None, store: Optional[object] = None) -> GuardrailVerdict:
+    if proposal is None:
+        raise TypeError("a recovery proposal is required")
     db_store = store or state_store
     # Rule 1: Mandate validity
     if state.mandate_status != "active":
@@ -126,4 +128,38 @@ def evaluate(state: RecoveryState, proposal: LLMProposal, state_store: Optional[
     )
 
 evaluate_proposal = evaluate
+
+
+def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id: str, state_store: Optional[object] = None, store: Optional[object] = None) -> TrueUpVerdict:
+    """Apply Rule 8's charge ceiling and Rule 9's cycle idempotency."""
+    db_store = store or state_store
+    if db_store is not None and hasattr(db_store, "is_true_up_audited"):
+        if db_store.is_true_up_audited(proposal.customer_id, cycle_id):
+            return TrueUpVerdict(
+                customer_id=proposal.customer_id, approved_charge_paise=0,
+                unbilled_units=proposal.unbilled_units, was_clamped=True,
+                clamp_reason="true-up already audited for current billing cycle",
+            )
+
+    final_amount = proposal.overage_charge_paise
+    reason = None
+    was_clamped = False
+    ceiling = contract.base_fee_paise * 3 // 2
+    if final_amount > ceiling:
+        final_amount = ceiling
+        was_clamped = True
+        reason = "true-up charge exceeded 150% of the contract base fee"
+
+    if db_store is not None and hasattr(db_store, "acquire_true_up_cycle"):
+        if not db_store.acquire_true_up_cycle(proposal.customer_id, cycle_id):
+            return TrueUpVerdict(
+                customer_id=proposal.customer_id, approved_charge_paise=0,
+                unbilled_units=proposal.unbilled_units, was_clamped=True,
+                clamp_reason="true-up already audited for current billing cycle",
+            )
+    return TrueUpVerdict(
+        customer_id=proposal.customer_id, approved_charge_paise=final_amount,
+        unbilled_units=proposal.unbilled_units, was_clamped=was_clamped,
+        clamp_reason=reason,
+    )
 
