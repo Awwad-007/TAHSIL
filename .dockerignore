@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.pytest_cache
+__pycache__
+*.py[cod]
+venv
+.venv
+tahsil.db
+tahsil.db-shm
+tahsil.db-wal
+README.md
+static/__pycache__
