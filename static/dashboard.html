@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TAHSĪL · Autonomous Mandate Recovery Terminal</title>
+  <title>TAHSĪL · Autonomous AI Revenue Recovery Terminal</title>
+
 
   <!-- Preconnects & Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -600,10 +601,10 @@
       <div class="term-brand">
         <a href="/" class="brand-logo">TAHSĪL</a>
         <span class="header-divider">|</span>
-        <span class="brand-subtitle">Autonomous Mandate Recovery</span>
+        <span class="brand-subtitle">Autonomous AI Revenue Recovery</span>
         <div class="live-beacon">
           <span class="pulse-dot"></span>
-          [ NPCI AUTO-GUARD ACTIVE ]
+          [ COMPLIANCE SHIELD ACTIVE ]
         </div>
       </div>
       
@@ -617,48 +618,48 @@
       </div>
     </header>
 
-    <!-- 2. KPI Telemetry Strip -->
-    <section class="kpi-strip" aria-label="Telemetry KPI Summary">
+    <!-- 2. Universal KPI Telemetry Strip -->
+    <section class="kpi-strip" aria-label="Universal Telemetry KPI Summary">
       <div class="kpi-cell kpi-cell--invoices">
         <div class="kpi-tag">
-          <span>Invoices Ingested</span>
-          <span>[STATE_STORE]</span>
+          <span>Total Volume Analyzed</span>
+          <span>[VOLUME]</span>
         </div>
-        <div class="kpi-val" id="kpi-states">0</div>
-        <div class="kpi-sub">Subscription telemetry states active</div>
+        <div class="kpi-val" id="kpi-volume">₹0.00</div>
+        <div class="kpi-sub"><span id="kpi-states">0</span> transactions ingested</div>
       </div>
 
       <div class="kpi-cell kpi-cell--decisions">
         <div class="kpi-tag">
-          <span>Recovery Decisions</span>
-          <span>[VERDICTS]</span>
+          <span>Recovered Revenue</span>
+          <span>[RECOVERED]</span>
         </div>
-        <div class="kpi-val" id="kpi-verdicts">0</div>
-        <div class="kpi-sub">Guardrail compliance evaluations</div>
+        <div class="kpi-val" id="kpi-recovered" style="color: var(--emerald);">₹0.00</div>
+        <div class="kpi-sub"><span id="kpi-verdicts">0</span> recovery decisions evaluated</div>
       </div>
 
       <div class="kpi-cell kpi-cell--overrides">
         <div class="kpi-tag">
-          <span>Guardrail Overrides</span>
-          <span>[FIREWALL]</span>
+          <span>Recovery Rate (%)</span>
+          <span>[EFFICIENCY]</span>
         </div>
-        <div class="kpi-val kpi-val--amber" id="kpi-overrides">0 (0.0%)</div>
-        <div class="kpi-sub">Unauthorized LLM actions blocked/clamped</div>
+        <div class="kpi-val" id="kpi-recovery-rate" style="color: var(--cyan);">0.0%</div>
+        <div class="kpi-sub"><span id="kpi-overrides">0</span> guardrail overrides</div>
       </div>
 
       <div class="kpi-cell kpi-cell--value">
         <div class="kpi-tag">
-          <span>Value at Risk Shielded</span>
-          <span>[ARR_INR]</span>
+          <span>Active Recovery Triggers</span>
+          <span>[TRIGGERS]</span>
         </div>
-        <div class="kpi-val" id="kpi-value">₹0.00</div>
-        <div class="kpi-sub">Recurring subscription capital protected</div>
+        <div class="kpi-val" id="kpi-triggers" style="color: var(--amber);">0 Active</div>
+        <div class="kpi-sub"><span id="kpi-value">₹0.00</span> volume protected</div>
       </div>
     </section>
 
     <!-- 3. Scenario Command Bus (Hardware Keys) -->
-    <nav class="command-bus" aria-label="Interactive Scenario Matrix">
-      <div class="bus-label">Simulate:</div>
+    <nav class="command-bus" aria-label="Active Recovery Triggers">
+      <div class="bus-label">Active Recovery Triggers:</div>
       <div class="bus-triggers">
         <button type="button" class="hw-key" data-accent="ice" onclick="triggerScenario('scenario_standard_retry')">
           <span class="hw-dot hw-dot--ice"></span>
@@ -690,15 +691,16 @@
     <!-- 4. Live Split Ledger -->
     <main class="split-ledger">
       
-      <!-- Left: Live Audit Log Table -->
+      <!-- Left: Intervention Log Table -->
       <section class="ledger-pane">
         <div class="pane-header">
           <div class="pane-title">
-            <span style="font-family: var(--font-display); font-weight: 300; color: #fff;">EVENT LEDGER</span>
-            <span class="badge-tag">[ LIVE AUDIT STREAM ]</span>
+            <span style="font-family: var(--font-display); font-weight: 300; color: #fff;">INTERVENTION LOG</span>
+            <span class="badge-tag">[ LIVE RECOVERY STREAM ]</span>
           </div>
           <span class="pane-count" id="event-count">0 ENTRIES</span>
         </div>
+
         
         <div class="table-container">
           <table class="term-table">
@@ -779,6 +781,18 @@
         const mRes = await fetch('/api/metrics');
         if (mRes.ok) {
           const m = await mRes.json();
+          const vol = (m.total_volume_analyzed || m.total_value_at_risk_rupees || 0);
+          document.getElementById('kpi-volume').innerText = `₹${vol.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          
+          const rec = (m.recovered_revenue || 0);
+          document.getElementById('kpi-recovered').innerText = `₹${rec.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          
+          const recRate = (m.recovery_rate_pct || 0);
+          document.getElementById('kpi-recovery-rate').innerText = `${recRate.toFixed(1)}%`;
+          
+          const activeTriggers = (m.active_recovery_count || 0);
+          document.getElementById('kpi-triggers').innerText = `${activeTriggers} Active`;
+
           document.getElementById('kpi-states').innerText = m.total_states || 0;
           document.getElementById('kpi-verdicts').innerText = m.total_verdicts || 0;
           
@@ -786,9 +800,9 @@
           const rate = m.override_rate_pct || 0.0;
           document.getElementById('kpi-overrides').innerText = `${overrides} (${rate}%)`;
 
-          const paiseInr = (m.total_value_at_risk_rupees || 0);
-          document.getElementById('kpi-value').innerText = `₹${paiseInr.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          document.getElementById('kpi-value').innerText = `₹${vol.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
+
 
         // 2. Fetch Events
         const eRes = await fetch('/api/events?limit=100');
@@ -835,7 +849,8 @@
             ? '<span class="badge-status badge-override">[ OVERRIDDEN ⚠️ ]</span>'
             : '<span class="badge-status badge-pass">[ PASSTHROUGH ]</span>';
         } else if (ev.event_type === 'LLM_PROPOSED') {
-          llm = ev.payload.intervention || '-';
+          const p = ev.payload.proposal || ev.payload;
+          llm = p.intervention || '-';
           finalAction = 'PENDING_GUARD';
           statusBadge = '<span class="badge-status" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35);">[ PROPOSED ]</span>';
         } else if (ev.event_type === 'EXECUTION_MOCKED') {
@@ -893,12 +908,50 @@
       const llmEv = related.find(e => e.event_type === 'LLM_PROPOSED');
       const execEv = related.find(e => e.event_type === 'EXECUTION_MOCKED');
       const webhookEv = related.find(e => e.event_type === 'WEBHOOK_RECEIVED');
+      const agentTypes = {
+        TRIAGE_AGENT_DONE: 'triage_agt',
+        SCHEDULE_AGENT_DONE: 'schedule_agt',
+        COPY_AGENT_DONE: 'copy_agt'
+      };
+      const agents = {};
+      related.filter(e => agentTypes[e.event_type]).forEach(e => {
+        agents[agentTypes[e.event_type]] = e.payload || {};
+      });
 
       let verdict = verdictEv ? (verdictEv.payload.verdict || {}) : null;
-      let proposal = (verdict && verdict.original_proposal) || (llmEv ? llmEv.payload : null);
+      const llmPayload = llmEv ? (llmEv.payload || {}) : {};
+      Object.assign(agents, llmPayload.agents || {});
+      let proposal = (verdict && verdict.original_proposal) || llmPayload.proposal || null;
       let exec = execEv ? execEv.payload.execution_result : null;
 
       let html = '';
+
+      // 0. Parallel agent swarm
+      const swarm = [
+        ['triage_agt', 'TRIAGE AGENT'],
+        ['schedule_agt', 'SCHEDULE AGENT'],
+        ['copy_agt', 'COPY AGENT']
+      ];
+      if (Object.keys(agents).length) {
+        html += `
+          <div class="inspect-card" style="border-left: 2px solid var(--violet);">
+            <div class="card-meta">
+              <span>00 · MULTI-AGENT SWARM</span>
+              <span class="accent">[PARALLEL]</span>
+            </div>
+            <div style="display:grid; gap:8px;">
+              ${swarm.map(([id, label]) => {
+                const a = agents[id] || {};
+                return `
+                  <div style="background:var(--surface-3); border:1px solid var(--line); border-radius:3px; padding:9px 10px;">
+                    <div class="card-meta"><span>${label}</span><span style="color:var(--violet);">${id}</span></div>
+                    <div class="card-reasoning" style="margin-top:6px;">${a.reasoning || 'No reasoning returned.'}</div>
+                    <div class="code-container" style="margin-top:6px;">${formatJsonWithHighlight(a)}</div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }
 
       // 1. Ingestion Snapshot
       if (webhookEv) {
@@ -963,7 +1016,7 @@ Status     : ${state.mandate_status || 'active'}</div>
               </div>
             ` : `
               <div style="font-family: var(--font-mono); font-size: 11px; color: var(--emerald);">
-                ✔ Verified against NPCI 3-attempt cap, 24h cooldown, and bank maintenance rules.
+                ✔ Verified against network retry caps, 24h cooldown, and maintenance blackout rules.
               </div>
             `}
             <div class="code-container">${formatJsonWithHighlight(verdictJson)}</div>
@@ -973,17 +1026,18 @@ Status     : ${state.mandate_status || 'active'}</div>
 
       // 4. Safe Execution Layer
       if (exec) {
-        const execPayload = exec.razorpay_call || exec.ops_alert || { action: exec.action_taken || "MOCKED_SAFE_DISPATCH" };
+        const execPayload = exec.gateway_call || exec.gateway_dispatch || exec.ops_alert || { action: exec.action_taken || "MOCKED_SAFE_DISPATCH" };
         html += `
           <div class="inspect-card inspect-card--execution">
             <div class="card-meta">
               <span>04 · DISPATCHED SAFE EXECUTION</span>
-              <span class="accent-emerald">[MOCKED_RAZORPAY_API]</span>
+              <span class="accent-emerald">[UNIVERSAL_GATEWAY_DISPATCH]</span>
             </div>
             <div class="code-container">${formatJsonWithHighlight(execPayload)}</div>
           </div>
         `;
       }
+
 
       drawer.innerHTML = html;
     }

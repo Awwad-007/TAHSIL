@@ -91,7 +91,10 @@ async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
         event_type="WEBHOOK_RECEIVED",
         payload=state.model_dump(mode="json")
     )
-    proposal, agents = await propose_intervention_parallel(state)
+    def log_agent(_name: str, result: Any) -> None:
+        default_state_store.log_agent_done(state.invoice_id, result)
+
+    proposal, agents = await propose_intervention_parallel(state, on_done=log_agent)
     default_state_store.log_event(
         invoice_id=state.invoice_id,
         event_type="LLM_PROPOSED",

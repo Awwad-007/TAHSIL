@@ -1,13 +1,13 @@
 """
-TAHSIL (تحصيل) — Interactive Narrated Demo Script
+TAHSĪL (تحصيل) — Interactive Narrated Demo Script
 ===================================================
-Razorpay AI Buildathon — Track 03: AI Revenue Recovery
+Autonomous AI Revenue Recovery Engine
 
 This script demonstrates Tahsil's neuro-symbolic recovery pipeline:
-1. Ingesting failed recurring payment events across Indian payment rails (UPI AutoPay, eNACH, Cards).
+1. Ingesting failed recurring payment events across global payment rails (Cards, UPI AutoPay, eNACH, ACH, SEPA).
 2. LLM reasoning and generating candidate recovery interventions.
-3. Pure-Python deterministic Guardrail Engine enforcing compliance rules (NPCI limits, 24h cooldowns, maintenance windows).
-4. Mocked Razorpay execution and live audit logging.
+3. Pure-Python deterministic Guardrail Engine enforcing compliance rules (retry caps, 24h cooldowns, maintenance windows).
+4. Platform-agnostic gateway execution and live audit logging.
 5. Highlight: The Staged Failure moment (Rule 2: Retry Budget Exhausted).
 """
 
@@ -25,11 +25,12 @@ try:
 except Exception:
     pass
 
+import asyncio
 import time
 from datetime import datetime
 from app.schemas import RecoveryState, InterventionType
 from app.simulator import get_demo_scenarios
-from app.llm_orchestrator import propose_intervention
+from app.llm_orchestrator import propose_intervention_parallel
 from app.guardrail_engine import evaluate_proposal
 from app.executor import execute
 from app.state_store import default_state_store
@@ -49,8 +50,8 @@ def print_banner():
     banner = f"""
 {CYAN}{BOLD}+============================================================================+
 |                                                                            |
-|       TAHSIL (تحصيل) — Autonomous AI Revenue Recovery Agent                 |
-|       Razorpay AI Buildathon — Track 03 (AI Revenue Recovery)              |
+|       TAHSĪL (تحصيل) — Autonomous AI Revenue Recovery Engine               |
+|       Enterprise Neuro-Symbolic Agent Middleware for Global Payments        |
 |                                                                            |
 |       Architecture: Neuro-Symbolic Hybrid (LLM + Deterministic Guardrails) |
 |                                                                            |
@@ -72,7 +73,8 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     print(f"\n{CYAN}{BOLD}[1. TELEMETRY INGESTION]{RESET}")
     print(f"  * Invoice ID       : {BOLD}{state.invoice_id}{RESET}")
     print(f"  * Customer ID      : {state.customer_id}")
-    print(f"  * Mandate Type     : {state.mandate_type.value.upper()} (ID: {state.mandate_id})")
+    print(f"  * Gateway / Rail   : {state.gateway_name.upper()} ({state.mandate_type.value.upper()})")
+    print(f"  * Transaction Ref  : {state.transaction_id or state.payment_id}")
     print(f"  * Mandate Status   : {state.mandate_status.upper()}")
     print(f"  * Amount at Risk   : {BOLD}{format_inr(state.plan_value_paise)}{RESET}")
     print(f"  * Retry Attempt    : {state.retry_count} of {state.max_retry_budget} max budget")
@@ -91,14 +93,23 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     time.sleep(0.3)
 
     # 2. LLM Reasoning
-    print(f"\n{MAGENTA}{BOLD}[2. NEURAL REASONING — LLM PROPOSER (Claude Sonnet 4.6 / Heuristic Fallback)]{RESET}")
+    print(f"\n{MAGENTA}{BOLD}[2. NEURAL REASONING — MULTI-AGENT SWARM (GPT-6 Astra / Heuristic Fallback)]{RESET}")
     start_llm = time.time()
-    proposal = propose_intervention(state)
+    print(f"  {CYAN}↳ triage_agt  / schedule_agt  / copy_agt launched concurrently...{RESET}")
+
+    def agent_done(_name, res):
+        default_state_store.log_agent_done(state.invoice_id, res)
+        print(f"  {GREEN}✓ {res.agent} DONE{RESET}  {CYAN}{res.reasoning}{RESET}")
+
+    proposal, agents = asyncio.run(propose_intervention_parallel(state, on_done=agent_done))
     elapsed = time.time() - start_llm
     default_state_store.log_event(
         invoice_id=state.invoice_id,
         event_type="LLM_PROPOSED",
-        payload=proposal.model_dump(mode="json")
+        payload={
+            "proposal": proposal.model_dump(mode="json"),
+            "agents": {name: res.model_dump(mode="json") for name, res in agents.items()},
+        }
     )
     print(f"  * Proposed Action  : {BOLD}{proposal.intervention.value}{RESET}")
     if proposal.proposed_retry_ts:
@@ -113,7 +124,7 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     if name == "scenario_exhausted_budget":
         print(f"\n{RED}{BOLD}!! [CRITICAL STAGED FAILURE MOMENT] !!{RESET}")
         print(f"{RED}  Notice: The LLM attempted to be 'helpful' by proposing a 4th retry for a high-value customer,{RESET}")
-        print(f"{RED}  violating the maximum NPCI retry budget cap (3/3). Directly executing this would trigger{RESET}")
+        print(f"{RED}  violating the maximum compliance retry budget cap (3/3). Directly executing this would trigger{RESET}")
         print(f"{RED}  bank penalty fees and customer harassment complaints.{RESET}")
         time.sleep(0.5)
 
@@ -142,14 +153,16 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     time.sleep(0.3)
 
     # 4. Mocked Execution
-    print(f"\n{GREEN}{BOLD}[4. SAFE DISPATCH — MOCKED RAZORPAY EXECUTOR & AUDIT]{RESET}")
+    print(f"\n{GREEN}{BOLD}[4. SAFE DISPATCH — UNIVERSAL GATEWAY EXECUTOR & AUDIT]{RESET}")
     exec_result = execute(verdict, state, store=default_state_store)
     
-    if "razorpay_call" in exec_result:
-        call = exec_result["razorpay_call"]
-        print(f"  * Razorpay Call    : {BOLD}{call['method']} {call['endpoint']}{RESET}")
+    call = exec_result.get("gateway_call")
+    if call:
+        print(f"  * Gateway Dispatch : {BOLD}{call['method']} {call['endpoint']} [{call.get('gateway', 'universal').upper()}]{RESET}")
         if "payment_link_url" in exec_result:
             print(f"  * Payment Link Url : {CYAN}{exec_result['payment_link_url']}{RESET}")
+        if "customer_recovery_message" in exec_result:
+            print(f"  * Empathetic Msg   : {CYAN}\"{exec_result['customer_recovery_message']}\"{RESET}")
     elif "ops_alert" in exec_result:
         alert = exec_result["ops_alert"]
         print(f"  * Ops Alert Queue  : {RED}{BOLD}{alert['target']} [{alert['body']['alert']}]{RESET}")
@@ -178,11 +191,13 @@ def main():
     print(f"\n{CYAN}{BOLD}{'='*80}{RESET}")
     print(f"{CYAN}{BOLD}TAHSIL DEMO TELEMETRY & REVENUE RECOVERY SUMMARY{RESET}")
     print(f"{CYAN}{BOLD}{'='*80}{RESET}")
-    print(f"  * Total Failed Subscriptions Ingested : {BOLD}{metrics['total_states']}{RESET}")
+    print(f"  * Total Transactions Ingested         : {BOLD}{metrics['total_states']}{RESET}")
     print(f"  * Total Guardrail Decisions Evaluated : {BOLD}{metrics['total_verdicts']}{RESET}")
     print(f"  * LLM Proposals Overridden by Rules   : {RED}{BOLD}{metrics['total_overrides']}{RESET}")
     print(f"  * Deterministic Override Rate         : {YELLOW}{BOLD}{metrics['override_rate_pct']}%{RESET}")
-    print(f"  * Total Revenue Value at Risk         : {GREEN}{BOLD}Rs. {metrics['total_value_at_risk_rupees']:,.2f}{RESET}")
+    print(f"  * Total Volume Analyzed               : {BOLD}Rs. {metrics['total_volume_analyzed']:,.2f}{RESET}")
+    print(f"  * Recovered Revenue Potential         : {GREEN}{BOLD}Rs. {metrics['recovered_revenue']:,.2f}{RESET}")
+    print(f"  * Active Recovery Rate                : {GREEN}{BOLD}{metrics['recovery_rate_pct']}%{RESET}")
     print(f"  * Interventions Breakdown             : {metrics['interventions_breakdown']}")
     print(f"\n{GREEN}{BOLD}[OK] Demo completed successfully.{RESET}")
     print(f"Open {BOLD}http://127.0.0.1:8000/dashboard{RESET} to view the live dashboard visualization.\n")

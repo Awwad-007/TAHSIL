@@ -4,6 +4,7 @@ from datetime import datetime
 from app import llm_orchestrator as orch
 from app.guardrail_engine import evaluate
 from app.schemas import AgentResult, InterventionType, LLMProposal, RecoveryState
+from app.state_store import StateStore
 
 
 def _state() -> RecoveryState:
@@ -72,3 +73,37 @@ def test_merged_proposal_still_enters_guardrails():
     verdict = evaluate(state, prop)
     assert verdict.final_intervention == InterventionType.ESCALATE_TO_HUMAN
     assert verdict.was_overridden is True
+
+
+def test_injected_astra_client_routes_all_agents_and_logs_named_events():
+    class FakeAstra:
+        def __init__(self):
+            self.calls = []
+
+        def propose_agent_result(self, *, agent, state):
+            self.calls.append(agent)
+            return {
+                "agent": agent,
+                "intervention": "RETRY_AT" if agent == "triage_agt" else None,
+                "proposed_retry_ts": "2026-09-05T10:00:00" if agent == "schedule_agt" else None,
+                "reasoning": f"{agent} model result",
+                "customer_copy": "We can help keep your account active." if agent == "copy_agt" else None,
+            }
+
+    client = FakeAstra()
+    orch.set_model_client(client)
+    try:
+        proposal, agents = asyncio.run(orch.propose_intervention_parallel(_state()))
+    finally:
+        orch.set_model_client(None)
+
+    assert set(client.calls) == {"triage_agt", "schedule_agt", "copy_agt"}
+    assert proposal.intervention == InterventionType.RETRY_AT
+    assert set(agents) == set(client.calls)
+
+    store = StateStore(":memory:")
+    for result in agents.values():
+        store.log_agent_done("inv_async_001", result)
+    assert [e.event_type for e in reversed(store.get_events())] == [
+        "TRIAGE_AGENT_DONE", "SCHEDULE_AGENT_DONE", "COPY_AGENT_DONE"
+    ]

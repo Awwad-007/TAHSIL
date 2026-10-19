@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-from app.schemas import RecoveryState, RecoveryEvent
+from app.schemas import AgentResult, RecoveryState, RecoveryEvent
 
 DEFAULT_DB_PATH = Path("tahsil.db")
 
@@ -98,8 +98,9 @@ class StateStore:
         return [RecoveryState.model_validate_json(r["state_json"]) for r in rows]
 
     def log_event(self, invoice_id: str, event_type: str, payload: Dict[str, Any], timestamp: Optional[datetime] = None) -> RecoveryEvent:
-        ts = (timestamp or datetime.utcnow()).isoformat()
+        ts = (timestamp or datetime.now()).isoformat()
         payload_json = json.dumps(payload, default=str)
+
         conn = self._get_conn()
         cursor = conn.execute("""
             INSERT INTO recovery_events (invoice_id, timestamp, event_type, payload_json)
@@ -113,6 +114,18 @@ class StateStore:
             timestamp=datetime.fromisoformat(ts),
             event_type=event_type,
             payload=payload
+        )
+
+    def log_agent_done(self, invoice_id: str, result: AgentResult) -> RecoveryEvent:
+        names = {
+            "triage_agt": "TRIAGE_AGENT_DONE",
+            "schedule_agt": "SCHEDULE_AGENT_DONE",
+            "copy_agt": "COPY_AGENT_DONE",
+        }
+        return self.log_event(
+            invoice_id=invoice_id,
+            event_type=names.get(result.agent, "AGENT_DONE"),
+            payload=result.model_dump(mode="json"),
         )
 
     def get_events(self, invoice_id: Optional[str] = None, limit: int = 100) -> List[RecoveryEvent]:
@@ -194,7 +207,14 @@ class StateStore:
             interventions[fin] = interventions.get(fin, 0) + 1
 
         total_paise = conn.execute("SELECT SUM(plan_value_paise) as s FROM recovery_states").fetchone()["s"] or 0
+        total_volume = total_paise / 100.0
         override_rate = round((overrides / total_verdicts * 100), 1) if total_verdicts > 0 else 0.0
+
+        # Calculate recovered revenue & recovery efficiency
+        # Active recovery includes strategic retries and personalized payment links
+        active_recovery_count = interventions.get("RETRY_AT", 0) + interventions.get("SEND_PAYMENT_LINK", 0)
+        recovery_rate_pct = round((active_recovery_count / total_verdicts * 100), 1) if total_verdicts > 0 else 0.0
+        recovered_revenue = round(total_volume * (recovery_rate_pct / 100.0), 2) if total_volume > 0 else 0.0
 
         return {
             "total_states": total_states,
@@ -202,9 +222,14 @@ class StateStore:
             "total_verdicts": total_verdicts,
             "total_overrides": overrides,
             "override_rate_pct": override_rate,
-            "total_value_at_risk_rupees": total_paise / 100.0,
+            "total_volume_analyzed": total_volume,
+            "total_value_at_risk_rupees": total_volume,
+            "recovered_revenue": recovered_revenue,
+            "recovery_rate_pct": recovery_rate_pct,
+            "active_recovery_count": active_recovery_count,
             "interventions_breakdown": interventions
         }
+
 
     def clear_all(self):
         conn = self._get_conn()

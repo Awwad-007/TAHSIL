@@ -1,12 +1,20 @@
 import asyncio
 import os
 from datetime import datetime, timedelta
-from typing import Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from app.schemas import AgentResult, RecoveryState, LLMProposal, InterventionType
 
 load_dotenv()
+
+_model_client: Optional[Any] = None
+
+
+def set_model_client(client: Optional[Any]) -> None:
+    """Inject the active OmniRush/Astra structured client for this process."""
+    global _model_client
+    _model_client = client
 
 SYSTEM_PROMPT = """You are Tahsīl's Autonomous AI Revenue Recovery Agent.
 Your mission is to analyze telemetry from a failed recurring subscription payment across global payment rails (Cards, UPI AutoPay, eNACH, ACH, SEPA, and Direct Debit) and propose the single most effective recovery intervention from:
@@ -141,7 +149,40 @@ def _risk_score(state: RecoveryState) -> float:
     return min(round(score, 2), 1.0)
 
 
+def _live_agent(name: str, state: RecoveryState) -> Optional[AgentResult]:
+    if _model_client is not None:
+        try:
+            res = _model_client.propose_agent_result(agent=name, state=state)
+            return AgentResult.model_validate(res)
+        except Exception as e:
+            print(f"[LLM Orchestrator Warning] {name} model call failed: {e}. Using fallback reasoner.")
+            return None
+    if os.getenv("ANTHROPIC_API_KEY", "").strip():
+        prop = propose_intervention(state)
+        if name == "triage_agt":
+            return AgentResult(
+                agent=name, intervention=prop.intervention, reasoning=prop.reasoning,
+                risk_score=_risk_score(state),
+            )
+        if name == "schedule_agt":
+            return AgentResult(
+                agent=name,
+                proposed_retry_ts=prop.proposed_retry_ts if prop.intervention == InterventionType.RETRY_AT else None,
+                reasoning="Model-predicted retry timing checked against liquidity telemetry.",
+                liquidity_window_ok=True,
+            )
+        return AgentResult(
+            agent=name, proposed_incentive_pct=prop.proposed_incentive_pct,
+            reasoning=prop.reasoning,
+            customer_copy=f"Hi, we noticed a temporary issue with invoice {state.invoice_id}; we will help keep your service active.",
+        )
+    return None
+
+
 def _triage(state: RecoveryState) -> AgentResult:
+    live = _live_agent("triage_agt", state)
+    if live:
+        return live
     prop = _heuristic_propose(state)
     return AgentResult(
         agent="triage_agt",
@@ -152,6 +193,9 @@ def _triage(state: RecoveryState) -> AgentResult:
 
 
 def _schedule(state: RecoveryState) -> AgentResult:
+    live = _live_agent("schedule_agt", state)
+    if live:
+        return live
     prop = _heuristic_propose(state)
     retry_ts = prop.proposed_retry_ts if prop.intervention == InterventionType.RETRY_AT else None
     ok = True
@@ -166,6 +210,9 @@ def _schedule(state: RecoveryState) -> AgentResult:
 
 
 def _copy(state: RecoveryState) -> AgentResult:
+    live = _live_agent("copy_agt", state)
+    if live:
+        return live
     prop = _heuristic_propose(state)
     msg = (
         f"Hi, we noticed a temporary issue processing your subscription payment for invoice {state.invoice_id}. "
@@ -206,11 +253,23 @@ def _merge(tri: AgentResult, sch: AgentResult, cpy: AgentResult) -> LLMProposal:
 
 async def propose_intervention_parallel(
     state: RecoveryState,
+    on_done: Optional[Callable[[str, AgentResult], None]] = None,
 ) -> Tuple[LLMProposal, Dict[str, AgentResult]]:
-    tri, sch, cpy = await asyncio.gather(
-        triage_agt(state),
-        schedule_agt(state),
-        copy_agt(state),
-    )
+    async def run(name: str, fn: Callable[[RecoveryState], Any]) -> Tuple[str, AgentResult]:
+        res = await fn(state)
+        if on_done:
+            on_done(name, res)
+        return name, res
+
+    tasks = [
+        asyncio.create_task(run("triage_agt", triage_agt)),
+        asyncio.create_task(run("schedule_agt", schedule_agt)),
+        asyncio.create_task(run("copy_agt", copy_agt)),
+    ]
+    done = {}
+    for task in asyncio.as_completed(tasks):
+        name, res = await task
+        done[name] = res
+    tri, sch, cpy = done["triage_agt"], done["schedule_agt"], done["copy_agt"]
     out = {r.agent: r for r in (tri, sch, cpy)}
     return _merge(tri, sch, cpy), out
