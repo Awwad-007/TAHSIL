@@ -236,6 +236,43 @@ def scenario_interactive_negotiation():
     print(f"  Response          : {CYAN}{res.response}{RESET}")
 
 
+def scenario_vip_concession():
+    state = RecoveryState(
+        invoice_id="inv_vip_013", customer_id="cust_vip_013", plan_value_paise=250000,
+        lifetime_value_paise=250000, retry_count=2, max_retry_budget=3,
+        last_attempt_ts=datetime(2026, 10, 4, 10, 0), mandate_status="active",
+        max_incentive_pct=10.0,
+    )
+    reply = CustomerReply(
+        invoice_id=state.invoice_id, customer_id=state.customer_id,
+        message="Please give me a 10% concession while I clear this payment.",
+        received_at=datetime(2026, 10, 4, 10, 0),
+    )
+    res = asyncio.run(negotiator_agt(state, reply, store=default_state_store))
+    print(f"\n{MAGENTA}{BOLD}[SMART PRICING — VIP LTV CONCESSION]{RESET}")
+    print(f"  * Customer LTV      : {format_inr(state.lifetime_value_paise)}")
+    print(f"  * Negotiation       : {GREEN if res.approved else RED}{res.response}{RESET}")
+    print(f"  * Churn Risk Score  : {res.churn_risk_score:.2f}")
+
+
+def scenario_angry_customer():
+    state = RecoveryState(
+        invoice_id="inv_angry_014", customer_id="cust_angry_014", plan_value_paise=199900,
+        lifetime_value_paise=80000, retry_count=1, max_retry_budget=3,
+        last_attempt_ts=datetime(2026, 10, 4, 10, 0), mandate_status="active",
+    )
+    reply = CustomerReply(
+        invoice_id=state.invoice_id, customer_id=state.customer_id,
+        message="This is ridiculous and unacceptable! I am furious and disappointed. Please give me a 3-day extension or cancel this terrible service!",
+        received_at=datetime(2026, 10, 4, 10, 0),
+    )
+    res = asyncio.run(negotiator_agt(state, reply, store=default_state_store))
+    print(f"\n{RED}{BOLD}[MOOD READING — ACCOUNT MANAGER ESCALATION]{RESET}")
+    print(f"  * Churn Risk Score  : {res.churn_risk_score:.2f}")
+    print(f"  * Negotiation       : {res.response}")
+    print(f"  * Escalation Target : internal_ops_webhook")
+
+
 def scenario_unbilled_trueup():
     """Show quota leakage being reconciled and safely capped."""
     customer_id = "cust_api_quota_010"
@@ -358,6 +395,8 @@ def main():
         run_scenario(name, state, idx, total)
 
     scenario_interactive_negotiation()
+    scenario_vip_concession()
+    scenario_angry_customer()
     scenario_unbilled_trueup()
     scenario_proactive_upsell()
     scenario_runaway_script()

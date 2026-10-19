@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app import main
-from app.llm_orchestrator import negotiator_agt
+from app.llm_orchestrator import concession_agt, negotiator_agt
 from app.schemas import CustomerReply, RecoveryState
 from app.state_store import StateStore
 
@@ -61,6 +61,40 @@ def test_negotiator_uses_cooldown_and_merchant_cap():
     assert cap_res.approved is False
     assert cap_res.verdict.final_incentive_pct == 5.0
     assert "maximum" in cap_res.response
+
+
+def test_concession_agent_unlocks_vip_discount_for_high_ltv():
+    import asyncio
+    assert asyncio.run(concession_agt(_state(lifetime_value_paise=150000, max_incentive_pct=10.0))) == 10.0
+    assert asyncio.run(concession_agt(_state(lifetime_value_paise=75000))) == 2.0
+
+    vip = _state(lifetime_value_paise=150000, max_incentive_pct=10.0)
+    reply = CustomerReply(
+        invoice_id=vip.invoice_id, customer_id=vip.customer_id,
+        message="Please give me a 10% concession.",
+        received_at=datetime(2026, 9, 4, 10, 0),
+    )
+    res = asyncio.run(negotiator_agt(vip, reply))
+    assert res.approved is True
+    assert res.verdict.final_incentive_pct == 10.0
+
+
+def test_angry_reply_scores_high_and_logs_account_manager_escalation():
+    import asyncio
+    store = StateStore(":memory:")
+    state = _state()
+    reply = CustomerReply(
+        invoice_id=state.invoice_id,
+        customer_id=state.customer_id,
+        message="This is ridiculous and unacceptable! I am furious and disappointed. Please give me a 3-day extension or cancel this terrible service!",
+        received_at=datetime(2026, 9, 4, 10, 0),
+    )
+    res = asyncio.run(negotiator_agt(state, reply, store=store))
+    assert res.approved is True
+    assert res.churn_risk_score > 0.8
+    events = store.get_events()
+    alert = next(e for e in events if e.event_type == "SENTIMENT_ESCALATION")
+    assert alert.payload["target"] == "internal_ops_webhook"
 
 
 def test_reply_endpoint_returns_negotiation_result(monkeypatch):

@@ -157,7 +157,27 @@ def _terms(msg: str, at: datetime) -> Tuple[Optional[datetime], Optional[float]]
     return date, inc
 
 
-def _negotiate(state: RecoveryState, msg: str, at: datetime, store: Optional[Any]) -> NegotiationResult:
+async def concession_agt(state: RecoveryState) -> float:
+    """Calculate a concession ceiling from customer lifetime value."""
+    ltv = state.lifetime_value_paise
+    if ltv > 100_000:
+        return 10.0
+    if ltv > 50_000:
+        return 2.0
+    if ltv > 0:
+        return 0.0
+    return state.max_incentive_pct
+
+
+def _sentiment(msg: str) -> float:
+    text = msg.lower()
+    hot = ("angry", "furious", "unacceptable", "ridiculous", "disappointed", "cancel", "lawsuit", "terrible", "hate")
+    hits = sum(text.count(word) for word in hot)
+    return min(1.0, round(0.25 + hits * 0.15 + (0.2 if "!" in msg else 0.0), 2))
+
+
+def _negotiate(state: RecoveryState, msg: str, at: datetime, store: Optional[Any], limit: float, risk: float) -> NegotiationResult:
+    ctx = state.model_copy(update={"max_incentive_pct": limit})
     retry_ts, inc = _terms(msg, at)
     if retry_ts:
         prop = LLMProposal(
@@ -176,7 +196,7 @@ def _negotiate(state: RecoveryState, msg: str, at: datetime, store: Optional[Any
             intervention=InterventionType.ESCALATE_TO_HUMAN,
             reasoning="Customer request was ambiguous; a specialist must clarify the requested accommodation.",
         )
-    verdict = evaluate(state, prop, store=store)
+    verdict = evaluate(ctx, prop, store=store)
     approved = (
         not verdict.was_overridden
         and verdict.final_intervention == prop.intervention
@@ -199,6 +219,7 @@ def _negotiate(state: RecoveryState, msg: str, at: datetime, store: Optional[Any
         verdict=verdict,
         approved=approved,
         response=response,
+        churn_risk_score=risk,
     )
 
 
@@ -207,7 +228,23 @@ async def negotiator_agt(
     reply: CustomerReply,
     store: Optional[Any] = None,
 ) -> NegotiationResult:
-    return await asyncio.to_thread(_negotiate, state, reply.message, reply.received_at, store)
+    limit, risk = await asyncio.gather(
+        concession_agt(state),
+        asyncio.to_thread(_sentiment, reply.message),
+    )
+    res = await asyncio.to_thread(_negotiate, state, reply.message, reply.received_at, store, limit, risk)
+    if risk > 0.8 and store is not None and hasattr(store, "log_event"):
+        store.log_event(
+            invoice_id=state.invoice_id,
+            event_type="SENTIMENT_ESCALATION",
+            payload={
+                "target": "internal_ops_webhook",
+                "customer_id": state.customer_id,
+                "churn_risk_score": risk,
+                "reason": "high customer frustration detected",
+            },
+        )
+    return res
 
 
 def _risk_score(state: RecoveryState) -> float:

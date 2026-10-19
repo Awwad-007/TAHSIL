@@ -29,6 +29,7 @@ class RecoveryState(BaseModel):
     merchant_id: Optional[str] = "merch_default"
     mandate_type: MandateType = MandateType.CARD
     plan_value_paise: int = 0
+    lifetime_value_paise: int = Field(default=0, ge=0)
     currency: str = "INR"
     retry_count: int = 0
     max_retry_budget: int = 3
@@ -90,6 +91,7 @@ class CustomerReply(BaseModel):
     customer_id: str
     message: str
     received_at: datetime = Field(default_factory=datetime.now)
+    churn_risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 class GuardrailVerdict(BaseModel):
     final_intervention: InterventionType
@@ -142,6 +144,7 @@ class NegotiationResult(BaseModel):
     verdict: GuardrailVerdict
     approved: bool
     response: str
+    churn_risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 class RecoveryEvent(BaseModel):
     id: Optional[int] = None

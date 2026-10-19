@@ -185,6 +185,27 @@ The swarm coordinates Triage, Scheduler, Negotiator, Upsell, and Reconcile capab
 
 ---
 
+## Advanced Revenue Optimization
+
+### Smart Pricing: LTV-aware concessions
+
+The **Concession agent** protects margin while treating high-value relationships differently. It reads `lifetime_value_paise` from the normalized recovery state and computes a negotiation ceiling before the customer reply enters the guardrail engine:
+
+- lifetime value above `100,000` paise: up to **10%**;
+- lifetime value above `50,000` paise: up to **2%**;
+- lower-value accounts: no automatic concession by default;
+- legacy merchant caps remain the final hard boundary.
+
+This creates a controlled VIP experience: valuable customers can receive a meaningful concession without turning discounting into an unbounded model decision.
+
+### Mood Reading: sentiment-based churn prediction
+
+The Negotiator also scores the frustration level of each customer reply on a normalized `0.0–1.0` churn-risk scale. When the score exceeds `0.8`, TAHSĪL emits a secondary `SENTIMENT_ESCALATION` event addressed to `internal_ops_webhook` so an account manager can intervene—even when the automated negotiation itself succeeds.
+
+The feature connects revenue recovery with relationship preservation: the engine can save the transaction and still recognize that the account needs human attention.
+
+---
+
 ## Standard JSON Integration
 
 TAHSĪL does not require a provider-specific SDK at the application boundary. Any payment provider, billing system, or internal service can send a JSON webhook containing the identifiers and business fields required by the normalizer.
