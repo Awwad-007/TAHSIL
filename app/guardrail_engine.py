@@ -131,9 +131,17 @@ evaluate_proposal = evaluate
 
 
 def evaluate_true_up(proposal: TrueUpProposal, contract: ContractTier, cycle_id: Optional[str] = None, state_store: Optional[object] = None, store: Optional[object] = None) -> TrueUpVerdict:
-    """Apply Rule 8's charge ceiling and Rule 9's cycle idempotency."""
+    """Apply Rule 10, then the true-up ceiling and cycle idempotency rules."""
     cycle_id = cycle_id or datetime.now().strftime("%Y-%m")
     db_store = store or state_store
+    if proposal.usage_velocity_alert:
+        return TrueUpVerdict(
+            customer_id=proposal.customer_id, approved_charge_paise=0,
+            unbilled_units=proposal.unbilled_units, was_clamped=True,
+            clamp_reason="EMERGENCY_FREEZE_ESCALATE_TO_HUMAN",
+            upsell_proposed=proposal.upsell_proposed,
+            upsell_copy=proposal.upsell_copy,
+        )
     if db_store is not None and hasattr(db_store, "is_true_up_audited"):
         if db_store.is_true_up_audited(proposal.customer_id, cycle_id):
             return TrueUpVerdict(

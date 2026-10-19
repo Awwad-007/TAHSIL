@@ -122,6 +122,7 @@ class TrueUpProposal(BaseModel):
     audit_reason: str
     upsell_proposed: bool = False
     upsell_copy: Optional[str] = None
+    usage_velocity_alert: bool = False
 
 
 class TrueUpVerdict(BaseModel):

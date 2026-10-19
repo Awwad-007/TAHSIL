@@ -51,6 +51,19 @@ def test_proactive_upsell_is_not_proposed_for_small_surplus():
     assert proposal.upsell_copy is None
 
 
+def test_rule10_freezes_runaway_usage_true_up():
+    store = StateStore(":memory:")
+    contract = _contract(overage_rate_paise=100)
+    proposal = asyncio.run(audit_usage_leakage(
+        "cust_usage_001", _logs(5_501), contract,
+    ))
+    assert proposal.usage_velocity_alert is True
+    verdict = evaluate_true_up(proposal, contract, "2026-10", store=store)
+    assert verdict.approved_charge_paise == 0
+    assert verdict.was_clamped is True
+    assert verdict.clamp_reason == "EMERGENCY_FREEZE_ESCALATE_TO_HUMAN"
+
+
 def test_rule8_clamps_true_up_surge_to_150_percent_of_base_fee():
     store = StateStore(":memory:")
     contract = _contract(base_fee_paise=10_000, overage_rate_paise=100)

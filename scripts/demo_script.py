@@ -276,6 +276,24 @@ def scenario_proactive_upsell():
     print(f"  * Customer Message  : {CYAN}{proposal.upsell_copy}{RESET}")
 
 
+def scenario_runaway_script():
+    customer_id = "cust_runaway_012"
+    contract = ContractTier(
+        tier_name="Starter API", base_fee_paise=5_000, included_units=1_000,
+        overage_rate_paise=50, grace_units=100,
+    )
+    logs = [UsageRecord(
+        customer_id=customer_id, resource_name="api_calls", units_consumed=6_000,
+        recorded_at=datetime(2026, 10, 3),
+    )]
+    proposal = asyncio.run(audit_usage_leakage(customer_id, logs, contract))
+    verdict = evaluate_true_up(proposal, contract, "2026-10", store=default_state_store)
+    print(f"\n{RED}{BOLD}[RUNAWAY SCRIPT — EMERGENCY BRAKE]{RESET}")
+    print(f"  * Usage Velocity Alert: {proposal.usage_velocity_alert}")
+    print(f"  * Approved Charge     : {format_inr(verdict.approved_charge_paise)}")
+    print(f"  * Rule 10 Decision    : {RED}{verdict.clamp_reason}{RESET}")
+
+
 def main():
     print_banner()
     
@@ -342,6 +360,7 @@ def main():
     scenario_interactive_negotiation()
     scenario_unbilled_trueup()
     scenario_proactive_upsell()
+    scenario_runaway_script()
 
     # Summary Telemetry
     metrics = default_state_store.get_metrics()

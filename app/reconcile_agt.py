@@ -31,6 +31,7 @@ async def audit_usage_leakage(
     total_units = sum(log.units_consumed for log in logs)
     allowance = contract.included_units + contract.grace_units
     unbilled_units = max(0, total_units - allowance)
+    velocity = total_units > allowance * 5
     (upsell, copy), charge = await asyncio.gather(
         upsell_agt(customer_id, unbilled_units, contract),
         _charge_agt(unbilled_units, contract),
@@ -46,4 +47,5 @@ async def audit_usage_leakage(
             audit_reason=reason,
             upsell_proposed=upsell,
             upsell_copy=copy,
+            usage_velocity_alert=velocity,
     )
