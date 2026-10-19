@@ -17,8 +17,6 @@ RUN python -m pip install --upgrade pip==25.0.1 \
 COPY app ./app
 COPY scripts ./scripts
 COPY static ./static
-COPY tests ./tests
-COPY pytest.ini ./
 
 EXPOSE 8000
 
