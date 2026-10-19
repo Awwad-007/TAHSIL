@@ -1,321 +1,414 @@
-# TAHSĪL (تحصيل) — Autonomous AI Revenue Recovery Engine
-### Universal, Platform-Agnostic Agentic Middleware with Deterministic Financial Guardrails
+# TAHSĪL
 
-<div align="center">
+## Dual-Core Autonomous Revenue Assurance Engine
 
-[![Architecture](https://img.shields.io/badge/Architecture-Neuro--Symbolic_Split-059669?style=for-the-badge&logo=diagramsdotnet&logoColor=white)](#-architecture-the-neuro-symbolic-split)
-[![Gateways](https://img.shields.io/badge/Gateways-Stripe_%7C_Razorpay_%7C_Adyen_%7C_PayPal-6366F1?style=for-the-badge)](#-universal-gateway-support)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Claude 3.5 Sonnet](https://img.shields.io/badge/Neural_Proposer-Claude_3.5_Sonnet-D97706?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
-[![License](https://img.shields.io/badge/License-MIT-gray?style=for-the-badge)](LICENSE)
+> **Brains to reason. Brakes for money.**
 
-<br/>
+TAHSĪL is an autonomous, vendor-agnostic revenue assurance engine for recurring-revenue businesses. It combines concurrent agentic reasoning with deterministic financial controls so teams can recover more revenue without allowing an intelligent proposal to become an uncontrolled financial action.
 
-![Tahsīl Hero Interface](https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260806_132328_5f9029c8-218f-4489-82b6-29ff2849920e.png)
+Built for the **OmniRush Agentic Buildathon 2026**, TAHSĪL treats revenue assurance as two connected problems:
 
-<br/>
+1. **Uncollected revenue** — a valid subscription payment failed and needs a safe recovery path.
+2. **Unbilled revenue** — metered usage was delivered but never reconciled into an invoice.
 
-**“Brains to Reason. Brakes for Money.”**  
-*An institutional-grade, neuro-symbolic recurring revenue recovery engine engineered for global SaaS, B2B subscriptions, and fintech payment rails (Cards, UPI AutoPay, eNACH, ACH, SEPA, and Direct Debit).*
-
-[🚀 Quickstart](#-quickstart-guide) • [🏛 Architecture](#-architecture-the-neuro-symbolic-split) • [🛡 Guardrail Rules](#-the-7-deterministic-guardrail-rules) • [⚡ Staged Failure Showcase](#-the-staged-failure-showcase-spotlight) • [🖥 Defense Terminal](#-fintech-defense-terminal--ui-showcase) • [📡 REST API](#-rest-api-reference)
-
-</div>
+The result is a single FastAPI service with SQLite/WAL persistence, Pydantic V2 contracts, a local vector history index, mocked universal execution, and a reproducible Docker workflow.
 
 ---
 
-## 📌 Executive Summary
+## Executive Summary
 
-Recurring payment failures and involuntary subscription churn cost subscription businesses and merchants billions annually. Yet naive automated retries cause severe customer friction, payment gateway penalties, network dispute flags, and regulatory violations under modern banking standards.
+TAHSĪL is designed for SaaS, API platforms, marketplaces, and subscription businesses that need autonomous action around money without surrendering policy control.
 
-## 🐳 Reproducible Docker Build
+| Business problem | Autonomous response | Safety boundary |
+|---|---|---|
+| Failed recurring debit | Predict, schedule, negotiate, notify, or escalate | Retry budgets, cooldowns, mandate checks, fraud triage, incentive caps, idempotency |
+| Usage delivered but not billed | Aggregate usage, calculate overage, propose an upgrade, generate a true-up verdict | 150% surge ceiling, current-cycle idempotency, runaway-usage emergency freeze |
+| Customer communication | Personalized, context-aware notices across email, SMS, and WhatsApp | Mocked dispatch plus durable audit events |
 
-The project pins Python 3.11.11 in `.python-version` and all direct runtime/test dependencies in `requirements.txt` and `requirements.lock`. Docker installs the FAISS CPU runtime and starts the FastAPI service from a clean `python:3.11.11-slim-bookworm` image; the local FAISS history index is initialized in-process by `app.vector_index`.
+TAHSĪL never lets the reasoning layer execute directly. Agents produce structured proposals; a separate symbolic firewall decides what may actually happen.
 
-Prerequisite: Docker Engine with the Compose plugin.
+---
+
+## Why This Matters
+
+Revenue leakage appears in two directions:
+
+- **Churn leakage:** a customer wants to remain active, but a failed payment becomes involuntary churn.
+- **Metering leakage:** the platform fulfilled usage, but the billing system did not capture the corresponding value.
+
+Most recovery systems handle only the first. TAHSĪL closes both loops with a common design principle:
+
+> **Autonomy can recommend. Deterministic policy must authorize.**
+
+The engine is provider-neutral at its application boundary. Payment and billing systems send standard JSON. TAHSĪL normalizes the payload, reasons over the business state, applies hard rules, and emits a structured result or a human escalation.
+
+---
+
+## Dual-Core Architecture
+
+```mermaid
+flowchart LR
+    IN[Standard JSON webhooks<br/>and metered usage logs] --> N[Schema validation<br/>and normalization]
+    N --> C1[Churn Rescue Core]
+    N --> C2[Reconciliation Core]
+
+    subgraph C1[Churn Rescue Core — uncollected revenue]
+        T[Triage agent]
+        S[Scheduler agent]
+        CP[Contextual copy agent]
+        NG[Negotiator agent]
+        T --> P1[Recovery proposal]
+        S --> P1
+        CP --> P1
+        NG --> P1
+    end
+
+    subgraph C2[Reconciliation Core — unbilled revenue]
+        R[Reconcile agent]
+        U[Upsell agent]
+        R --> P2[True-up proposal]
+        U --> P2
+    end
+
+    P1 --> G[Deterministic Guardrail Engine]
+    P2 --> G
+    G --> X[Safe executor and channels]
+    G --> L[(SQLite WAL audit ledger)]
+    X --> L
+    L --> D[Operations dashboard]
+```
+
+### Core 1: Churn Rescue
+
+The Churn Rescue Core handles failed recurring payments across cards, bank debit rails, and other payment instruments through a standard normalized state model.
+
+It can:
+
+- infer whether a failure is transient, exhausted, revoked, or anomalous;
+- align retry timing with customer liquidity windows;
+- avoid known bank maintenance windows;
+- switch from automated retry to a secure payment-link recovery path;
+- pause a mandate when continued attempts would create friction;
+- negotiate customer-requested extensions and concessions;
+- route high-risk cases to human operations;
+- send respectful, context-aware notices through multiple channels.
+
+### Core 2: Usage Reconciliation
+
+The Reconciliation Core captures revenue that was delivered but not invoiced.
+
+It accepts:
+
+- `UsageRecord` entries with customer, resource, units, and timestamp;
+- a `ContractTier` with base fee, included units, grace units, and overage rate.
+
+It then:
+
+1. aggregates the customer’s usage;
+2. calculates the surplus above included plus grace units;
+3. computes the raw overage charge in paise;
+4. runs the proactive Upsell agent concurrently with charge computation;
+5. detects runaway usage velocity;
+6. sends the proposal through Rules 8, 9, and 10;
+7. writes `TRUE_UP_AUDITED` and, when approved, `TRUE_UP_INVOICE_GENERATED` ledger events.
+
+The customer receives a structured `TrueUpVerdict`, not an unchecked invoice instruction.
+
+---
+
+## The 10-Rule Deterministic Guardrail Engine
+
+The guardrail layer is the financial safety system. It is intentionally deterministic, inspectable, and independent from the model that proposed the action.
+
+### Churn Rescue rules
+
+| Rule | Control | Outcome |
+|---:|---|---|
+| 1 | Mandate validity | Inactive or revoked mandates become `DO_NOTHING`. |
+| 2 | Retry budget cap | Exhausted retry budgets become `ESCALATE_TO_HUMAN`. |
+| 3 | Mandatory cooldown | Retry attempts are clamped to at least 24 hours apart. |
+| 4 | Bank downtime collision | Retries inside a maintenance window shift past the window with a safety buffer. |
+| 5 | Incentive ceiling | Discounts are clamped to the merchant-configured maximum. |
+| 6 | Atomic action idempotency | Duplicate payment actions are blocked by SQLite locks. |
+| 7 | Policy pass-through | A compliant proposal is emitted unchanged. |
+
+### Reconciliation rules
+
+| Rule | Control | Outcome |
+|---:|---|---|
+| 8 | True-up surge ceiling | A proposed overage charge cannot exceed **150% of the customer’s base fee**. The charge is clamped and marked `was_clamped=true`. |
+| 9 | Current-cycle audit idempotency | A customer cannot receive more than one true-up invoice in the current billing cycle. Duplicate work returns a zero charge. |
+| 10 | **Runaway Script Emergency Freeze** | If one usage batch exceeds **500% of the monthly allowance**, the engine freezes the charge at zero and returns `EMERGENCY_FREEZE_ESCALATE_TO_HUMAN`. |
+
+Rule 10 exists to prevent astronomical bill shock caused by an infinite loop, runaway job, compromised credential, or telemetry defect. The system preserves the audit context while refusing to monetize the anomaly automatically.
+
+### The safety invariant
+
+```text
+Agent proposal → deterministic evaluation → approved action, clamp, no-op, or human escalation
+```
+
+There is no direct model-to-money path.
+
+---
+
+## Multi-Agent Swarm
+
+TAHSĪL uses a structured multi-agent pattern designed for concurrent reasoning and observable decisions. The buildathon operating profile is powered by **GPT-6 Astra** through a structured model-client seam, with a deterministic heuristic fallback for offline execution.
+
+This architecture directly fulfills the **Best Use of OmniRush** category criteria: autonomous agents are coordinated in a real product flow, their outputs are merged into typed proposals, and every financial action is checked by a non-LLM policy layer.
+
+### Agent roles
+
+| Agent | Responsibility | Core |
+|---|---|---|
+| **Triage** | Scores failure risk, detects fraud signals, selects a candidate intervention, and escalates high-risk cases. | Churn Rescue |
+| **Scheduler** | Finds a viable retry time using liquidity telemetry, cooldown rules, and timing context. | Churn Rescue |
+| **Negotiator** | Interprets a customer reply, extracts requested dates or concessions, and submits them to guardrails. | Churn Rescue |
+| **Upsell** | Detects meaningful usage surplus and drafts a personalized higher-tier offer that can waive the current overage fee. | Reconciliation |
+| **Reconcile** | Aggregates usage, calculates unbilled units and raw overage, and creates the typed true-up proposal. | Reconciliation |
+
+The Churn Rescue Triage, Scheduler, and Copy agents run concurrently and merge into one recovery proposal. The Reconciliation agent runs charge calculation concurrently with Upsell evaluation. The Negotiator is event-driven by a customer reply and re-enters the same guardrail firewall.
+
+### Model boundary
+
+- Structured inputs and outputs are validated with Pydantic V2.
+- The model client can be injected for Astra-compatible orchestration.
+- When no API credential is configured, deterministic heuristics keep the demo and tests fully offline.
+- The model proposes; the guardrail engine authorizes.
+
+---
+
+## Standard JSON Integration
+
+TAHSĪL does not require a provider-specific SDK at the application boundary. Any payment provider, billing system, or internal service can send a JSON webhook containing the identifiers and business fields required by the normalizer.
+
+### Payment failure ingestion
+
+```http
+POST /api/webhook/ingest
+Content-Type: application/json
+```
+
+```json
+{
+  "invoice_id": "inv_1001",
+  "customer_id": "cust_42",
+  "payment_id": "pay_1001",
+  "transaction_id": "txn_1001",
+  "plan_value_paise": 199900,
+  "currency": "INR",
+  "retry_count": 1,
+  "last_failure_reason": "INSUFFICIENT_FUNDS",
+  "mandate_status": "active"
+}
+```
+
+The normalizer also accepts common webhook shapes, but the portable contract is the generic JSON form above.
+
+### Usage leakage audit
+
+```http
+POST /api/audit/usage-leakage
+Content-Type: application/json
+```
+
+```json
+{
+  "customer_id": "cust_42",
+  "raw_usage_logs": [
+    {
+      "customer_id": "cust_42",
+      "resource_name": "api_calls",
+      "units_consumed": 185000,
+      "recorded_at": "2026-10-19T12:00:00"
+    }
+  ],
+  "contract": {
+    "tier_name": "growth",
+    "base_fee_paise": 100000,
+    "included_units": 100000,
+    "overage_rate_paise": 2,
+    "grace_units": 10000
+  }
+}
+```
+
+Example response shape:
+
+```json
+{
+  "customer_id": "cust_42",
+  "approved_charge_paise": 150000,
+  "unbilled_units": 75000,
+  "was_clamped": true,
+  "clamp_reason": "true-up charge exceeded 150% of the contract base fee",
+  "upsell_proposed": true,
+  "upsell_copy": "Hi cust_42, your usage exceeded the growth allowance..."
+}
+```
+
+---
+
+## API Surface
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Service health and version. |
+| `POST` | `/api/webhook/ingest` | Universal standard-JSON payment failure ingestion. |
+| `POST` | `/api/webhook/payment-failed` | Alias for payment failure ingestion. |
+| `POST` | `/api/webhook/reply` | Two-way customer negotiation. |
+| `POST` | `/api/audit/usage-leakage` | Metered usage audit and guarded true-up. |
+| `GET` | `/api/events` | Durable event-sourced audit trail. |
+| `GET` | `/api/states` | Current recovery states. |
+| `GET` | `/api/metrics` | Recovery telemetry and override metrics. |
+| `GET` | `/api/scenarios` | Demo recovery scenarios. |
+| `POST` | `/api/simulate/{scenario_name}` | Run one recovery scenario. |
+| `POST` | `/api/simulate-all` | Run the recovery scenario set. |
+| `POST` | `/api/reset` | Clear local demo state and locks. |
+
+Interactive OpenAPI documentation is available at `/docs` when the service is running.
+
+---
+
+## Auditability and Operations
+
+SQLite is configured with WAL mode for durable local persistence. The state store records:
+
+- normalized recovery states;
+- agent completion events;
+- proposals and guardrail verdicts;
+- mocked execution payloads;
+- channel dispatch results;
+- true-up audit and invoice events;
+- atomic payment and billing-cycle idempotency locks.
+
+The dashboard at `/dashboard` exposes a high-density operations view with KPI telemetry, intervention history, guardrail overrides, and proposal-versus-verdict inspection. The landing page at `/` provides the product-level entry point.
+
+External payment calls are intentionally mocked in this submission. The executor emits provider-neutral REST-shaped payloads and records them in the audit ledger, making the integration boundary visible without moving real money.
+
+---
+
+## Reproducibility and Deployment
+
+### Judging setup
+
+The intended judging path is one command:
 
 ```bash
-# Build and run the interactive seven-scenario demo in one command
 make run-demo
+```
 
-# Start the FastAPI server on http://localhost:8000
+This builds the pinned Docker image and runs the narrated demo in an ephemeral container. It exercises failed-payment recovery, liquidity timing, retry exhaustion, downtime shifting, mandate revocation, incentive clamping, contextual outreach, negotiation, usage true-up, proactive upsell, and the runaway-script emergency freeze.
+
+### Local development
+
+Prerequisites:
+
+- Python `3.11.11`, pinned in `.python-version`;
+- Docker Engine with Compose for the full reproducible path;
+- GNU Make for the convenience targets.
+
+```bash
+python -m venv .venv
+# Activate .venv using the command for your shell.
+python -m pip install --requirement requirements.lock
+
+# Run the offline test suite
+python -m pytest tests/ -v
+
+# Start the API locally
+uvicorn app.main:app --reload
+
+# Run the narrated demo without Docker
+python scripts/demo_script.py
+```
+
+The optional `.env` file may contain a model credential based on `.env.example`. The credential is never committed and is not required for the offline heuristic path.
+
+### Docker services
+
+```bash
+# API at http://localhost:8000
 docker compose up --build app
 
-# Run the offline test suite in the reproducible image
+# Ephemeral narrated demo
+docker compose run --rm demo
+
+# Tests in the same reproducible image
 docker compose run --rm demo python -m pytest tests/ -v
 ```
 
-The demo and tests use the heuristic path when `ANTHROPIC_API_KEY` is absent. To enable the optional live model path, export `ANTHROPIC_API_KEY` before running Compose; secrets are passed through the environment and are not copied into the image. The `demo` Compose service is intentionally ephemeral so every judge run starts with a fresh SQLite database and local FAISS index.
+The `Dockerfile` installs the pinned lockfile, the FAISS/NumPy runtime, and the required system library from a clean `python:3.11.11-slim-bookworm` base image. No global project dependency installation is required.
 
-**Tahsīl (تحصيل)** solves this with a **Neuro-Symbolic Hybrid Architecture**:
-* **The Neural Layer (LLM Proposer)** uses Claude 3.5 Sonnet (with built-in heuristic fallback) to ingest rich transaction telemetry (gateway failure codes, customer LTV, salary liquidity windows, bank downtime forecasts) and reason through the optimal recovery strategy.
-* **The Symbolic Layer (Deterministic Guardrail Engine)** acts as an unbreachable Python firewall. **The LLM never executes directly.** Recovery proposals pass 7 strict rules; metered usage true-ups add Rule 8's 150% surge ceiling and Rule 9's current-cycle invoice idempotency.
-* **The Execution Layer** safely logs and dispatches platform-agnostic REST payloads (`/v1/payments/{id}/retry`, `/v1/payment_links`, `/v1/subscriptions/{id}/pause`), formats empathetic customer recovery messages, and alerts merchant operations queues.
+### Live deployment readiness
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 THE NON-NEGOTIABLE AXIOM                               │
-│                                                                                        │
-│   The LLM NEVER executes any recovery action directly.                                 │
-│   It only emits structured JSON candidate proposals.                                   │
-│   A separate, pure-Python deterministic guardrail engine evaluates, clamps, or         │
-│   overrides that proposal against compliance, network, and merchant rules before safe  │
-│   execution.                                                                           │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🌐 Universal Gateway Support
-
-Tahsīl is completely platform-agnostic. It features a built-in webhook payload normalizer that seamlessly ingests events from all major payment infrastructure providers:
-
-| Provider | Webhook Event Signature | Normalized Entity Mapping |
-|---|---|---|
-| **Stripe** | `invoice.payment_failed`, `payment_intent.payment_failed` | Auto-extracts `invoice_id`, `payment_intent`, `customer`, `amount_due`, and decline codes. |
-| **Razorpay** | `payment.failed`, `subscription.paused` | Auto-extracts `invoice_id`, `payment_id`, `customer_id`, `amount`, and error descriptions. |
-| **Adyen** | `AUTHORISATION` (`success: false`) | Auto-extracts `merchantReference`, `pspReference`, `shopperReference`, and refusal reasons. |
-| **PayPal** | `PAYMENT.SALE.DENIED`, `BILLING.SUBSCRIPTION.*` | Auto-extracts `invoice_number`, `billing_agreement_id`, `payer_id`, and decline summaries. |
-| **Universal / Custom** | Standard JSON Payload | Ingests `payment_id`, `transaction_id`, `invoice_id`, `customer_id`, `plan_value_paise`. |
-
----
-
-## ⚖️ Why Traditional Recovery Fails vs. Tahsīl
-
-| Dimension | Naive Fixed Cron Retries | Unchecked LLM Agent | Tahsīl (Neuro-Symbolic Engine) |
-|---|---|---|---|
-| **Liquidity Timing** | ❌ Blind retries at fixed 24h intervals | ⚠️ Hallucinates arbitrary dates | ✅ **Alters retries to match customer salary liquidity windows** |
-| **Bank Maintenance** | ❌ Hits nocturnal batch downtime (02:00–06:00) | ❌ Ignores CBS maintenance calendars | ✅ **Shifts debit past downtime window with 15m safety buffer** |
-| **Regulatory Limits** | ❌ Breaches network 3-attempt caps | ❌ No compliance guarantees | ✅ **Strictly overrides to human ops when 3/3 attempts exhausted** |
-| **Mandatory Cooldowns** | ❌ Triggers technical debit declines | ⚠️ May retry too quickly | ✅ **Clamps minimum 24-hour presentation spacing** |
-| **Merchant Margins** | ❌ No dynamic payment links or incentives | ❌ May grant dangerous 20%+ discounts | ✅ **Clamps recovery discounts to merchant max cap (e.g., 5%)** |
-| **Customer Experience** | ❌ Impersonal and aggressive dunning | ⚠️ Unpredictable tone variation | ✅ **Generates empathetic, personalized customer retention messaging** |
-| **Idempotency** | ⚠️ Race condition vulnerable | ❌ No state locks | ✅ **Atomic SQLite locks prevent duplicate billing** |
-
----
-
-## 🏛 Architecture: The Neuro-Symbolic Split
-
-```mermaid
-flowchart TD
-    subgraph INGESTION ["1. Ingestion Layer"]
-        WH["Universal Webhooks: Stripe / Razorpay / Adyen / PayPal / Custom"] --> NORM["Payload Normalizer<br/>(normalize_gateway_payload)"]
-        NORM --> STORE[("State Store (SQLite WAL)")]
-        TEL["Telemetry: Error Code, Salary Window, Bank Maintenance"] --> STORE
-    end
-
-    subgraph NEURAL ["2. Neural Layer (Reasoning Proposer)"]
-        STORE --> LLM["LLM Orchestrator<br/>(Claude Sonnet 4.6 / Heuristic Fallback)"]
-        LLM -->|Emits Structured JSON| PROP["LLMProposal<br/>(Intervention, RetryTs, Discount%, Reasoning)"]
-    end
-
-    subgraph SYMBOLIC ["3. Symbolic Layer (Deterministic Firewall)"]
-        PROP --> G["Guardrail Engine<br/>(7 Strict Priority Rules)"]
-        G -->|Rule 1: Mandate Validity| V1["Active Subscription Check"]
-        G -->|Rule 2: Retry Budget Cap| V2["Max 3-Attempt Network Limit"]
-        G -->|Rule 3: 24h Cooldown| V3["Mandatory Presentation Gap"]
-        G -->|Rule 4: Bank Downtime Window| V4["Maintenance Blackout Avoidance"]
-        G -->|Rule 5: Incentive Ceiling| V5["Merchant Discount Margin Cap"]
-        G -->|Rule 6: Idempotency Lock| V6["Duplicate Webhook Blocker"]
-        G --> VERD["GuardrailVerdict<br/>(PASSED / CLAMPED / OVERRIDDEN)"]
-    end
-
-    subgraph EXECUTION ["4. Execution & Observability Layer"]
-        VERD --> EX["Executor<br/>(Universal Gateway Dispatch)"]
-        EX -->|RETRY_AT| GW1["POST /v1/payments/:id/retry"]
-        EX -->|SEND_PAYMENT_LINK| GW2["POST /v1/payment_links + Empathetic Message"]
-        EX -->|PAUSE_MANDATE| GW3["POST /v1/subscriptions/:id/pause"]
-        EX -->|ESCALATE_TO_HUMAN| OPS["Internal Ops Escalation / Slack Webhook"]
-        EX -->|DO_NOTHING| NOOP["No-Op"]
-        EX --> AUDIT[("SQLite Audit Trail & Metrics")]
-        AUDIT --> UI1["Hero Landing Page (/static/index.html)"]
-        AUDIT --> UI2["Fintech Defense Terminal (/static/dashboard.html)"]
-    end
-```
-
----
-
-## 🛡 The 7 Deterministic Guardrail Rules
-
-```
-Rule 1: Subscription / Mandate Validity Check
-   └─ IF mandate_status != "active" ➔ OVERRIDE to DO_NOTHING
-
-Rule 2: Payment Network Retry Budget Cap (Max 3 Attempts)
-   └─ IF proposal == RETRY_AT AND retry_count >= max_retry_budget ➔ OVERRIDE to ESCALATE_TO_HUMAN
-
-Rule 3: Mandatory 24-Hour Cooldown
-   └─ IF proposal.retry_ts < last_attempt_ts + 24h ➔ CLAMP retry_ts to (last_attempt_ts + 24h)
-
-Rule 4: CBS Bank Downtime Window Avoidance
-   └─ IF proposal.retry_ts collides with bank_downtime ➔ SHIFT retry_ts to (downtime_end + 15 min)
-
-Rule 5: Merchant Incentive Ceiling
-   └─ IF proposal.incentive_pct > max_incentive_pct ➔ CLAMP incentive_pct to max_incentive_pct (5%)
-
-Rule 6: Atomic Idempotency Lock
-   └─ IF is_locked(invoice_id, retry_count) == True ➔ OVERRIDE to DO_NOTHING
-
-Rule 7: Policy Pass-Through
-   └─ IF all compliance rules satisfied ➔ EMIT proposal as-is
-
-Rule 8: True-Up Surge Ceiling
-   └─ IF proposed usage charge > 150% of base fee ➔ CLAMP to 150% of base fee
-
-Rule 9: Idempotent Audit Ledger
-   └─ IF a true-up invoice exists for the customer in the current cycle ➔ DO_NOTHING
-```
-
----
-
-## ⚡ The Staged Failure Showcase Spotlight
-
-> **Scenario 3 (`scenario_exhausted_budget`) is our central demonstration feature.**  
-> It highlights why autonomous agents handling real capital must have deterministic guardrails.
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                             SCENARIO 3: THE STAGED FAILURE                             │
-│                                                                                        │
-│  1. INGESTION : High-value enterprise account ($49.99 / ₹4,999), failed 3/3 times.     │
-│  2. NEURAL    : Claude 3.5 Sonnet observes high LTV and attempts a 4th debit retry:    │
-│                 "Customer has high historical lifetime value; attempting another        │
-│                  automated debit retry after cooldown."                                │
-│  3. SYMBOLIC  : Guardrail Rule 2 catches the violation (3/3 attempts exhausted).       │
-│  4. VERDICT   : OVERRIDDEN ➔ ESCALATE_TO_HUMAN                                         │
-│                 Override Reason: "Network retry budget exhausted (attempted 3 of 3)"   │
-│  5. EXECUTION : Dispatches an urgent Ops alert instead of an illegal bank debit!      │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🖥 Fintech Defense Terminal & UI Showcase
-
-### 1. The Full-Viewport Dark Hero Page (`/static/index.html`)
-* Cinematic background video loop with dual-stacked scrim gradients.
-* Custom typography: `Sora` (200/300/400) for architectural branding + `JetBrains Mono` for command tags.
-* Instant simulation console to trigger test webhooks or jump directly into the live ops terminal.
-
-### 2. The High-Density Defense Terminal (`/static/dashboard.html`)
-* **Universal KPI Strip**:
-  - **Total Volume Analyzed**: Aggregate transaction capital ingested through the engine.
-  - **Recovered Revenue**: Capital successfully routed through intelligent recovery retries and links.
-  - **Recovery Rate (%)**: Recovery conversion efficiency percentage.
-  - **Active Recovery Triggers**: Real-time count of active retries and payment links in-flight.
-* **Active Recovery Triggers Bus**: Uniform, tactile hardware keys (`24H Cooldown`, `Salary Liquidity`, `Staged Failure Override`, `Bank Downtime Shift`, `Mandate Revocation`, `Incentive Capping`).
-* **Live Split Audit Ledger**:
-  - **Left**: Real-time **Intervention Log** with color-coded status badges (`[ PASSTHROUGH ]` vs `[ OVERRIDDEN ⚠️ ]`).
-  - **Right**: Deep Deconstruction Drawer displaying the exact **Neural Proposal vs. Symbolic Guardrail Diff** with custom JSON syntax highlighting and empathetic messaging inspection.
-
----
-
-## 🔍 Real vs. Mocked Boundaries (Transparency)
-
-| Component | Status | Details |
-|---|---|---|
-| **LLM Reasoning Engine** | **REAL** | Structured tool calling using Anthropic Claude 3.5 Sonnet (`claude-sonnet-4-6`) with built-in heuristic fallback for zero-dependency offline resilience. |
-| **Deterministic Guardrail Engine** | **REAL** | Pure-Python compliance firewall evaluating all 7 hard rules. |
-| **State Store & Event Sourcing** | **REAL** | Persistent SQLite database with WAL mode, state tracking, and atomic idempotency locks. |
-| **REST API Server** | **REAL** | FastAPI application exposing webhooks, metrics, states, and scenario triggers. |
-| **Live Defense Terminal** | **REAL** | Real-time frontend with 2s polling, hardware trigger bus, and deep JSON inspector. |
-| **Universal Gateway Dispatch** | **MOCKED** | Formats platform-agnostic REST payloads (`/v1/payments/:id/retry`, `/v1/payment_links`, `/v1/subscriptions/:id/pause`) with empathetic messages to avoid incurring live charges during testing. |
-
----
-
-## 🚀 Quickstart Guide
-
-### 1. Prerequisites & Installation
+`render.yaml` provides a Docker-based web-service blueprint for Render-compatible deployment:
 
 ```bash
-# Clone repository
-git clone https://github.com/Awwad-007/TAHSIL.git
-cd TAHSIL
-
-# Install dependencies
-pip install -r requirements.txt
+# In a connected deployment environment, use the repository's render.yaml blueprint.
+# The service listens on PORT 8000 inside the container.
 ```
 
-### 2. Configure Environment (Optional)
+The container starts FastAPI with Uvicorn on `0.0.0.0:8000`. Set the optional model credential as a deployment secret; keep credentials out of source control. For production use, attach durable storage or an external database for the audit ledger before enabling real financial execution.
 
-```bash
-cp .env.example .env
+---
+
+## Repository Map
+
+```text
+TAHSIL/
+├── app/
+│   ├── main.py              # FastAPI API and pipeline entry points
+│   ├── schemas.py           # Pydantic V2 contracts and webhook normalization
+│   ├── llm_orchestrator.py  # Concurrent Churn Rescue agent swarm
+│   ├── reconcile_agt.py     # Reconcile and Upsell agents
+│   ├── guardrail_engine.py  # Ten deterministic financial safety rules
+│   ├── state_store.py       # SQLite WAL state, events, and idempotency
+│   ├── executor.py          # Provider-neutral mocked action executor
+│   ├── channels/             # Concurrent multi-channel notices
+│   ├── simulator.py          # Payment recovery scenario fixtures
+│   └── vector_index.py       # Local customer-history retrieval
+├── scripts/demo_script.py    # Narrated end-to-end buildathon demo
+├── tests/                    # Recovery, agent, API, and true-up tests
+├── static/                   # Landing page and operations dashboard
+├── Dockerfile                # Pinned reproducible runtime image
+├── docker-compose.yml        # API and ephemeral demo services
+├── render.yaml               # Live deployment blueprint
+├── requirements.txt          # Direct dependency declarations
+├── requirements.lock         # Reproducible dependency lockfile
+├── Makefile                  # `test` and `run-demo` commands
+└── .env.example              # Redacted optional configuration template
 ```
-*(Optional: Add your `ANTHROPIC_API_KEY`. If omitted, Tahsīl automatically utilizes its built-in rule-heuristic reasoning simulator with zero setup).*
 
-### 3. Run Automated Unit Tests
+---
 
-Verify all 7 guardrail rules, universal webhook normalizers, and state store idempotency:
+## Verification
+
+The regression suite covers:
+
+- all deterministic recovery rules;
+- concurrent agent execution and proposal merge;
+- fraud and anomaly escalation;
+- contextual customer history retrieval;
+- customer reply negotiation;
+- multi-channel dispatch;
+- standard usage reconciliation;
+- proactive upsell thresholds;
+- Rule 8 surge clamping;
+- Rule 9 true-up idempotency;
+- Rule 10 runaway usage freeze.
+
+Run:
+
 ```bash
 python -m pytest tests/ -v
 ```
 
-### 4. Run the Narrated Terminal Demo
-
-```bash
-python scripts/demo_script.py
-```
-
-### 5. Launch the Web Server & Dashboard
-
-```bash
-uvicorn app.main:app --reload
-```
-* **Landing Page**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-* **Defense Terminal**: [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
-* **Interactive API Docs (Swagger)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
 ---
 
-## 📡 REST API Reference
+## Closing Principle
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Serves the full-viewport Dark Hero Landing Page |
-| `GET` | `/dashboard` | Serves the Fintech Defense Terminal |
-| `GET` | `/health` | Healthcheck and service metadata |
-| `POST` | `/api/webhook/ingest` | Universal webhook ingestion (Stripe, Razorpay, Adyen, PayPal, generic) |
-| `POST` | `/api/webhook/payment-failed` | Ingests recurring payment failure event and runs the neuro-symbolic pipeline |
-| `POST` | `/api/audit/usage-leakage` | Audits metered usage and generates a guarded true-up verdict |
-| `GET` | `/api/metrics` | Returns live telemetry stats (total volume, recovered revenue, recovery rate, overrides) |
-| `GET` | `/api/events` | Chronological audit trail of all webhook, LLM, guardrail, and execution events |
-| `GET` | `/api/states` | Returns latest recovery state for all active subscriptions |
-| `GET` | `/api/scenarios` | Lists available demo test scenarios |
-| `POST` | `/api/simulate/{scenario_name}` | Triggers recovery pipeline for a specific scenario |
-| `POST` | `/api/simulate-all` | Batch-simulates all 6 test scenarios in sequence |
-| `POST` | `/api/reset` | Resets all database states, audit logs, and idempotency locks |
+TAHSĪL is not an unchecked autonomous billing bot. It is a revenue assurance control plane: concurrent agents find the opportunity, typed schemas make the intent explicit, and deterministic guardrails decide whether money may move.
 
----
-
-## 📁 Repository Structure
-
-```
-TAHSIL/
-├── app/
-│   ├── __init__.py
-│   ├── schemas.py           # Pydantic V2 models, universal gateway schemas & webhook normalizer
-│   ├── state_store.py       # SQLite WAL persistence, idempotency locks & universal recovery metrics
-│   ├── guardrail_engine.py   # 7 deterministic priority compliance rules
-│   ├── llm_orchestrator.py   # Claude Sonnet 4.6 tool-use reasoner with empathetic customer tone
-│   ├── executor.py          # Universal gateway dispatch, empathetic messaging & ops alerting
-│   ├── simulator.py         # 6 realistic recurring failure scenarios with multi-gateway telemetry
-│   └── main.py              # FastAPI server, universal webhook ingest & REST endpoints
-├── static/
-│   ├── index.html           # Full-viewport dark hero landing page
-│   └── dashboard.html       # High-density Fintech Defense Terminal with universal recovery KPIs
-├── scripts/
-│   └── demo_script.py       # Interactive narrated terminal demo walkthrough
-├── tests/
-│   └── test_guardrails.py   # 9 comprehensive unit tests (guardrails, normalizers, executor)
-├── requirements.txt         # Project dependencies
-├── .env.example             # Template environment variables
-├── pytest.ini               # Pytest configuration
-└── README.md                # Project documentation & architecture
-```
-
----
-
-## 📄 License & Attribution
-
-Tahsīl is distributed under the MIT License. Built for enterprise teams requiring reliable, compliant, and autonomous AI revenue recovery middleware.
+**Brains to reason. Brakes for money.**
