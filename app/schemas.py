@@ -79,6 +79,12 @@ class AgentResult(BaseModel):
     customer_copy: Optional[str] = None
     historical_context: List[str] = Field(default_factory=list)
 
+class CustomerReply(BaseModel):
+    invoice_id: str
+    customer_id: str
+    message: str
+    received_at: datetime = Field(default_factory=datetime.now)
+
 class GuardrailVerdict(BaseModel):
     final_intervention: InterventionType
     final_retry_ts: Optional[datetime] = None
@@ -86,6 +92,15 @@ class GuardrailVerdict(BaseModel):
     was_overridden: bool
     override_reason: Optional[str] = None
     original_proposal: LLMProposal
+
+class NegotiationResult(BaseModel):
+    agent: str = "negotiator_agt"
+    requested_retry_ts: Optional[datetime] = None
+    requested_incentive_pct: Optional[float] = None
+    proposal: LLMProposal
+    verdict: GuardrailVerdict
+    approved: bool
+    response: str
 
 class RecoveryEvent(BaseModel):
     id: Optional[int] = None

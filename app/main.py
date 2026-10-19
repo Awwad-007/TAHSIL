@@ -7,10 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app.schemas import RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, normalize_gateway_payload
+from app.schemas import CustomerReply, RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, normalize_gateway_payload
 from app.state_store import default_state_store
 from app.guardrail_engine import evaluate
-from app.llm_orchestrator import propose_intervention_parallel
+from app.llm_orchestrator import negotiator_agt, propose_intervention_parallel
 from app.executor import execute
 from app.simulator import get_demo_scenarios, get_scenario
 
@@ -128,6 +128,33 @@ async def webhook_payment_failed(payload: Dict[str, Any]):
     state = normalize_gateway_payload(payload)
     result = await process_recovery_pipeline(state)
     return {"status": "success", "data": result}
+
+
+@app.post("/api/webhook/reply")
+async def webhook_reply(reply: CustomerReply):
+    state = default_state_store.get_state(reply.invoice_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Recovery state not found for invoice")
+    if state.customer_id != reply.customer_id:
+        raise HTTPException(status_code=422, detail="Customer does not match invoice state")
+    default_state_store.log_event(
+        invoice_id=reply.invoice_id,
+        event_type="CUSTOMER_REPLY_RECEIVED",
+        payload=reply.model_dump(mode="json"),
+    )
+    res = await negotiator_agt(state, reply, store=default_state_store)
+    default_state_store.log_event(
+        invoice_id=reply.invoice_id,
+        event_type="NEGOTIATION_EXTRACTED",
+        payload={
+            "requested_retry_ts": res.requested_retry_ts.isoformat() if res.requested_retry_ts else None,
+            "requested_incentive_pct": res.requested_incentive_pct,
+            "response": res.response,
+            "approved": res.approved,
+            "verdict": res.verdict.model_dump(mode="json"),
+        },
+    )
+    return {"status": "success", "data": res.model_dump(mode="json")}
 
 
 @app.post("/api/simulate/{scenario_name}")

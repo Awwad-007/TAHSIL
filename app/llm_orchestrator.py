@@ -1,10 +1,12 @@
 import asyncio
 import os
+import re
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Tuple
 from dotenv import load_dotenv
 from anthropic import Anthropic
-from app.schemas import AgentResult, RecoveryState, LLMProposal, InterventionType
+from app.schemas import AgentResult, CustomerReply, NegotiationResult, RecoveryState, LLMProposal, InterventionType
+from app.guardrail_engine import evaluate
 from app.vector_index import history_index
 
 load_dotenv()
@@ -135,6 +137,77 @@ def propose_intervention(state: RecoveryState) -> LLMProposal:
     except Exception as e:
         print(f"[LLM Orchestrator Warning] Live API call failed: {e}. Using fallback reasoner.")
         return _heuristic_propose(state)
+
+
+def _terms(msg: str, at: datetime) -> Tuple[Optional[datetime], Optional[float]]:
+    date = None
+    inc = None
+    hit = re.search(r"\b(20\d{2}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?\b", msg)
+    if hit:
+        date = datetime.fromisoformat(f"{hit.group(1)}T{hit.group(2) or at.strftime('%H:%M')}")
+    else:
+        hit = re.search(r"\b(\d+)\s*[- ]?day(?:s)?\b", msg.lower())
+        if hit:
+            date = at + timedelta(days=int(hit.group(1)))
+        elif re.search(r"\bthree\s+days?\b", msg.lower()):
+            date = at + timedelta(days=3)
+    hit = re.search(r"(?:discount|concession|off)\D{0,10}(\d+(?:\.\d+)?)\s*%|\b(\d+(?:\.\d+)?)\s*%\s*(?:discount|concession|off)", msg.lower())
+    if hit:
+        inc = float(hit.group(1) or hit.group(2))
+    return date, inc
+
+
+def _negotiate(state: RecoveryState, msg: str, at: datetime, store: Optional[Any]) -> NegotiationResult:
+    retry_ts, inc = _terms(msg, at)
+    if retry_ts:
+        prop = LLMProposal(
+            intervention=InterventionType.RETRY_AT,
+            proposed_retry_ts=retry_ts,
+            reasoning="Customer requested a billing-date extension; validating the requested retry time against policy.",
+        )
+    elif inc is not None:
+        prop = LLMProposal(
+            intervention=InterventionType.SEND_PAYMENT_LINK,
+            proposed_incentive_pct=inc,
+            reasoning="Customer requested a concession; validating it against the merchant incentive ceiling.",
+        )
+    else:
+        prop = LLMProposal(
+            intervention=InterventionType.ESCALATE_TO_HUMAN,
+            reasoning="Customer request was ambiguous; a specialist must clarify the requested accommodation.",
+        )
+    verdict = evaluate(state, prop, store=store)
+    approved = (
+        not verdict.was_overridden
+        and verdict.final_intervention == prop.intervention
+        and prop.intervention in (InterventionType.RETRY_AT, InterventionType.SEND_PAYMENT_LINK)
+    )
+    if approved and retry_ts:
+        response = f"Approved — we can retry your payment on {verdict.final_retry_ts.strftime('%Y-%m-%d at %H:%M')} as requested."
+    elif approved and inc is not None:
+        response = f"Approved — we can offer a {verdict.final_incentive_pct:g}% concession through a secure payment link."
+    elif verdict.final_intervention == InterventionType.RETRY_AT and verdict.final_retry_ts:
+        response = f"We cannot use the requested time because of the 24-hour safety window, but we can retry on {verdict.final_retry_ts.strftime('%Y-%m-%d at %H:%M')}."
+    elif verdict.final_intervention == InterventionType.SEND_PAYMENT_LINK:
+        response = f"We cannot approve that concession, but we can offer the merchant maximum of {verdict.final_incentive_pct:g}%."
+    else:
+        response = f"We cannot approve this request automatically: {verdict.override_reason or 'a specialist review is required'}."
+    return NegotiationResult(
+        requested_retry_ts=retry_ts,
+        requested_incentive_pct=inc,
+        proposal=prop,
+        verdict=verdict,
+        approved=approved,
+        response=response,
+    )
+
+
+async def negotiator_agt(
+    state: RecoveryState,
+    reply: CustomerReply,
+    store: Optional[Any] = None,
+) -> NegotiationResult:
+    return await asyncio.to_thread(_negotiate, state, reply.message, reply.received_at, store)
 
 
 def _risk_score(state: RecoveryState) -> float:

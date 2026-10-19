@@ -28,9 +28,9 @@ except Exception:
 import asyncio
 import time
 from datetime import datetime
-from app.schemas import RecoveryState, InterventionType
+from app.schemas import CustomerReply, RecoveryState, InterventionType
 from app.simulator import get_demo_scenarios
-from app.llm_orchestrator import propose_intervention_parallel
+from app.llm_orchestrator import negotiator_agt, propose_intervention_parallel
 from app.guardrail_engine import evaluate_proposal
 from app.executor import execute
 from app.state_store import default_state_store
@@ -92,6 +92,7 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
         payload=state.model_dump(mode="json")
     )
     time.sleep(0.3)
+
 
     # 2. LLM Reasoning
     print(f"\n{MAGENTA}{BOLD}[2. NEURAL REASONING — MULTI-AGENT SWARM (GPT-6 Astra / Heuristic Fallback)]{RESET}")
@@ -179,6 +180,46 @@ def run_scenario(name: str, state: RecoveryState, index: int, total: int):
     time.sleep(0.3)
 
 
+def scenario_interactive_negotiation():
+    state = RecoveryState(
+        invoice_id="inv_neg_008",
+        mandate_id="sub_neg_card_808",
+        payment_id="pay_neg_808",
+        transaction_id="txn_neg_808",
+        customer_id="cust_negotiation_008",
+        merchant_id="merch_saas_02",
+        plan_value_paise=199900,
+        retry_count=1,
+        max_retry_budget=3,
+        last_attempt_ts=datetime(2026, 9, 4, 10, 0),
+        last_failure_reason="U30_INSUFFICIENT_FUNDS",
+        mandate_status="active",
+    )
+    reply = CustomerReply(
+        invoice_id=state.invoice_id,
+        customer_id=state.customer_id,
+        message="Please give me a 3-day extension and retry my payment then.",
+        received_at=datetime(2026, 9, 4, 10, 0),
+    )
+    default_state_store.save_state(state)
+    default_state_store.log_event(
+        invoice_id=state.invoice_id,
+        event_type="CUSTOMER_REPLY_RECEIVED",
+        payload=reply.model_dump(mode="json"),
+    )
+    res = asyncio.run(negotiator_agt(state, reply, store=default_state_store))
+    default_state_store.log_event(
+        invoice_id=state.invoice_id,
+        event_type="NEGOTIATION_EXTRACTED",
+        payload=res.model_dump(mode="json"),
+    )
+    print(f"\n{MAGENTA}{BOLD}[INTERACTIVE NEGOTIATION — scenario_interactive_negotiation]{RESET}")
+    print(f"  Customer Reply    : {CYAN}\"{reply.message}\"{RESET}")
+    print(f"  Requested Retry   : {res.requested_retry_ts.isoformat() if res.requested_retry_ts else 'None'}")
+    print(f"  Negotiator Status : {GREEN if res.approved else RED}{BOLD}{'APPROVED' if res.approved else 'DENIED'}{RESET}")
+    print(f"  Response          : {CYAN}{res.response}{RESET}")
+
+
 def main():
     print_banner()
     
@@ -218,6 +259,8 @@ def main():
 
     for idx, (name, state) in enumerate(scenarios.items(), start=1):
         run_scenario(name, state, idx, total)
+
+    scenario_interactive_negotiation()
 
     # Summary Telemetry
     metrics = default_state_store.get_metrics()
