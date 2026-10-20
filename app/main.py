@@ -1,13 +1,21 @@
 import os
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app.schemas import CustomerReply, RecoveryState, LLMProposal, GuardrailVerdict, RecoveryEvent, UsageRecord, ContractTier, TrueUpVerdict, normalize_gateway_payload
+from app.schemas import (
+    ContractTier,
+    CustomerReply,
+    RecoveryState,
+    TrueUpVerdict,
+    UsageRecord,
+    normalize_gateway_payload,
+)
 from app.state_store import default_state_store
 from app.guardrail_engine import evaluate, evaluate_true_up
 from app.reconcile_agt import audit_usage_leakage
@@ -16,11 +24,13 @@ from app.executor import execute
 from app.channels.dispatcher import dispatch_recovery_notice
 from app.simulator import get_demo_scenarios, get_scenario
 
+
 app = FastAPI(
     title="TAHSĪL — Autonomous AI Revenue Recovery Engine",
     description="Platform-agnostic neuro-symbolic AI engine with deterministic guardrails for subscription recovery across global payment gateways.",
     version="1.0.0"
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,12 +45,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 class UsageLeakageRequest(BaseModel):
+    """Request body for auditing a customer's metered usage."""
+
     customer_id: str
     raw_usage_logs: List[UsageRecord]
     contract: ContractTier
 
+
 @app.get("/health")
 def health():
+    """Return a lightweight liveness response for deployment health checks."""
     return {
         "status": "healthy",
         "service": "tahsil-ai-revenue-recovery",
@@ -48,30 +62,42 @@ def health():
         "timestamp": datetime.now().isoformat()
     }
 
+
 @app.get("/")
 def root():
+    """Redirect the root URL to the public landing page."""
     return RedirectResponse(url="/static/index.html")
+
 
 @app.get("/dashboard")
 def dashboard_redirect():
+    """Redirect operators to the recovery dashboard."""
     return RedirectResponse(url="/static/dashboard.html")
+
 
 @app.get("/api/events")
 def get_events(limit: int = 100):
+    """Return the most recent persisted recovery events."""
     events = default_state_store.get_events(limit=limit)
     return [e.model_dump(mode="json") for e in events]
 
+
 @app.get("/api/states")
 def get_states():
+    """Return all persisted recovery states ordered by update time."""
     states = default_state_store.list_states()
     return [s.model_dump(mode="json") for s in states]
 
+
 @app.get("/api/metrics")
 def get_metrics():
+    """Return aggregate recovery, override, and intervention metrics."""
     return default_state_store.get_metrics()
+
 
 @app.get("/api/scenarios")
 def list_scenarios():
+    """Describe the built-in simulation scenarios for the dashboard."""
     scenarios = get_demo_scenarios()
     return {
         name: {
@@ -92,7 +118,13 @@ def list_scenarios():
         for name, s in scenarios.items()
     }
 
+
 async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
+    """Run anomaly triage, parallel agents, guardrails, execution, and notices.
+
+    The deterministic guardrail verdict remains the only source of truth for
+    the action that reaches the executor and notification adapters.
+    """
     flags, level, _score = assess_anomalies(state)
     state = state.model_copy(update={"anomaly_flags": flags, "risk_level": level})
     default_state_store.save_state(state)
@@ -101,6 +133,7 @@ async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
         event_type="WEBHOOK_RECEIVED",
         payload=state.model_dump(mode="json")
     )
+
     def log_agent(_name: str, result: Any) -> None:
         default_state_store.log_agent_done(state.invoice_id, result)
 
@@ -135,9 +168,11 @@ async def process_recovery_pipeline(state: RecoveryState) -> Dict[str, Any]:
         "channels": channels,
     }
 
+
 @app.post("/api/webhook/payment-failed")
 @app.post("/api/webhook/ingest")
 async def webhook_payment_failed(payload: Dict[str, Any]):
+    """Normalize a payment-failure webhook and start recovery processing."""
     state = normalize_gateway_payload(payload)
     result = await process_recovery_pipeline(state)
     return {"status": "success", "data": result}
@@ -145,7 +180,7 @@ async def webhook_payment_failed(payload: Dict[str, Any]):
 
 @app.post("/api/audit/usage-leakage", response_model=TrueUpVerdict)
 async def audit_usage_leakage_endpoint(request: UsageLeakageRequest):
-    """Audit metered usage, apply true-up guardrails, and write the invoice ledger."""
+    """Audit usage, apply true-up guardrails, and write the invoice ledger."""
     proposal = await audit_usage_leakage(request.customer_id, request.raw_usage_logs, request.contract)
     cycle_id = datetime.now().strftime("%Y-%m")
     verdict = evaluate_true_up(proposal, request.contract, cycle_id, store=default_state_store)
@@ -158,6 +193,7 @@ async def audit_usage_leakage_endpoint(request: UsageLeakageRequest):
 
 @app.post("/api/webhook/reply")
 async def webhook_reply(reply: CustomerReply):
+    """Evaluate an inbound customer accommodation request safely."""
     state = default_state_store.get_state(reply.invoice_id)
     if state is None:
         raise HTTPException(status_code=404, detail="Recovery state not found for invoice")
@@ -185,6 +221,7 @@ async def webhook_reply(reply: CustomerReply):
 
 @app.post("/api/simulate/{scenario_name}")
 async def simulate_scenario(scenario_name: str):
+    """Run one named simulation scenario through the recovery pipeline."""
     try:
         state = get_scenario(scenario_name)
     except ValueError as e:
@@ -192,8 +229,10 @@ async def simulate_scenario(scenario_name: str):
     result = await process_recovery_pipeline(state)
     return {"status": "success", "scenario": scenario_name, "data": result}
 
+
 @app.post("/api/simulate-all")
 async def simulate_all():
+    """Run every built-in scenario and return aggregate recovery metrics."""
     scenarios = get_demo_scenarios()
     results = []
     for name, state in scenarios.items():
@@ -206,7 +245,9 @@ async def simulate_all():
         "results": results
     }
 
+
 @app.post("/api/reset")
 def reset_database():
+    """Delete stored states, events, and idempotency locks."""
     default_state_store.clear_all()
     return {"status": "success", "message": "Database reset successful"}

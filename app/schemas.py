@@ -1,11 +1,15 @@
-from pydantic import BaseModel, Field, model_validator
-from enum import Enum
 from datetime import datetime
-from typing import Optional, Dict, Any, Union, List, Literal
+from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, model_validator
 
 RiskLevel = Literal["LOW", "MED", "HIGH"]
 
+
 class MandateType(str, Enum):
+    """Supported recurring-payment mandate and payment-rail types."""
+
     UPI_AUTOPAY = "upi_autopay"
     ENACH = "enach"
     CARD = "card"
@@ -13,14 +17,25 @@ class MandateType(str, Enum):
     SEPA = "sepa"
     DIRECT_DEBIT = "direct_debit"
 
+
 class InterventionType(str, Enum):
+    """Actions that the recovery engine may propose or execute."""
+
     RETRY_AT = "RETRY_AT"
     SEND_PAYMENT_LINK = "SEND_PAYMENT_LINK"
     PAUSE_MANDATE = "PAUSE_MANDATE"
     ESCALATE_TO_HUMAN = "ESCALATE_TO_HUMAN"
     DO_NOTHING = "DO_NOTHING"
 
+
 class RecoveryState(BaseModel):
+    """Normalized payment-failure state shared by all recovery agents.
+
+    The model intentionally keeps gateway-neutral identifiers and telemetry so
+    the same orchestration and deterministic policy code can serve multiple
+    payment providers.
+    """
+
     invoice_id: str
     mandate_id: Optional[str] = None
     payment_id: Optional[str] = None
@@ -49,6 +64,7 @@ class RecoveryState(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def populate_identifier_fallbacks(cls, values: Any) -> Any:
+        """Fill missing payment identifiers from the first available ID."""
         if isinstance(values, dict):
             # Ensure mandate_id, payment_id, transaction_id have fallbacks among each other
             primary_id = (
@@ -66,14 +82,20 @@ class RecoveryState(BaseModel):
                 values["transaction_id"] = primary_id
         return values
 
+
 class LLMProposal(BaseModel):
+    """Structured candidate action produced by a reasoning agent."""
+
     intervention: InterventionType
     proposed_retry_ts: Optional[datetime] = None
     proposed_incentive_pct: Optional[float] = None
     reasoning: str = Field(..., description="short natural-language justification")
     customer_copy: Optional[str] = None
 
+
 class AgentResult(BaseModel):
+    """Role-specific output from one parallel recovery agent."""
+
     agent: str
     intervention: Optional[InterventionType] = None
     proposed_retry_ts: Optional[datetime] = None
@@ -86,14 +108,20 @@ class AgentResult(BaseModel):
     anomaly_flags: List[str] = Field(default_factory=list)
     risk_level: RiskLevel = "LOW"
 
+
 class CustomerReply(BaseModel):
+    """Inbound customer message used by the negotiation agent."""
+
     invoice_id: str
     customer_id: str
     message: str
     received_at: datetime = Field(default_factory=datetime.now)
     churn_risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
+
 class GuardrailVerdict(BaseModel):
+    """Deterministic policy decision over an agent proposal."""
+
     final_intervention: InterventionType
     final_retry_ts: Optional[datetime] = None
     final_incentive_pct: Optional[float] = None
@@ -103,6 +131,8 @@ class GuardrailVerdict(BaseModel):
 
 
 class UsageRecord(BaseModel):
+    """One metered resource-usage observation for a customer."""
+
     customer_id: str
     resource_name: str
     units_consumed: int = Field(..., ge=0)
@@ -110,6 +140,8 @@ class UsageRecord(BaseModel):
 
 
 class ContractTier(BaseModel):
+    """Billing terms used to calculate a usage true-up."""
+
     tier_name: str
     base_fee_paise: int = Field(..., ge=0)
     included_units: int = Field(..., ge=0)
@@ -118,6 +150,8 @@ class ContractTier(BaseModel):
 
 
 class TrueUpProposal(BaseModel):
+    """Candidate charge created from previously unbilled usage."""
+
     customer_id: str
     unbilled_units: int = Field(..., ge=0)
     overage_charge_paise: int = Field(..., ge=0)
@@ -128,6 +162,8 @@ class TrueUpProposal(BaseModel):
 
 
 class TrueUpVerdict(BaseModel):
+    """Guardrail decision for a usage true-up invoice."""
+
     customer_id: str
     approved_charge_paise: int = Field(..., ge=0)
     unbilled_units: int = Field(..., ge=0)
@@ -136,7 +172,10 @@ class TrueUpVerdict(BaseModel):
     upsell_proposed: bool = False
     upsell_copy: Optional[str] = None
 
+
 class NegotiationResult(BaseModel):
+    """Negotiator extraction, policy decision, and customer-facing response."""
+
     agent: str = "negotiator_agt"
     requested_retry_ts: Optional[datetime] = None
     requested_incentive_pct: Optional[float] = None
@@ -146,17 +185,23 @@ class NegotiationResult(BaseModel):
     response: str
     churn_risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
+
 class RecoveryEvent(BaseModel):
+    """Auditable event persisted for a recovery workflow."""
+
     id: Optional[int] = None
     invoice_id: str
     timestamp: datetime = Field(default_factory=datetime.now)
     event_type: str
     payload: Dict[str, Any] = Field(default_factory=dict)
 
+
 def normalize_gateway_payload(payload: Dict[str, Any]) -> RecoveryState:
-    """
-    Normalizes webhook payloads from various payment gateways (Stripe, Razorpay,
-    Adyen, PayPal, or generic JSON) into a platform-agnostic RecoveryState.
+    """Normalize a gateway webhook into a platform-agnostic recovery state.
+
+    Supported inputs include Stripe, Razorpay, Adyen, PayPal, and the generic
+    payload shape used by custom gateways. Unknown payloads use the universal
+    fallback mapping rather than being discarded.
     """
     if not isinstance(payload, dict):
         raise ValueError("Webhook payload must be a dictionary")
