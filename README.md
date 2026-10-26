@@ -444,3 +444,60 @@ python -m pytest tests/ -v
 TAHSĪL is not an unchecked autonomous billing bot. It is a revenue assurance control plane: concurrent agents find the opportunity, typed schemas make the intent explicit, and deterministic guardrails decide whether money may move.
 
 **Brains to reason. Brakes for money.**
+
+---
+
+## Clean Linux Rebuild Checklist
+
+The repository is designed to rebuild from a clean Linux checkout without machine-specific paths or committed secrets. The source tree contains a pinned Python runtime (`.python-version`), a pinned dependency lockfile (`requirements.lock`), a production Dockerfile, and a single canonical test command.
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/Awwad-007/TAHSIL.git
+cd TAHSIL
+cp .env.example .env
+```
+
+`.env.example` contains placeholders only. Keep real credentials in the shell or deployment secret store; never commit `.env`.
+
+### 2. Rebuild the production image
+
+```bash
+docker build --tag tahsil:local .
+```
+
+The image installs `requirements.lock`, copies only runtime application assets, and intentionally excludes tests and test configuration from the production container.
+
+### 3. Run the service
+
+```bash
+docker run --rm --env-file .env --publish 8000:8000 tahsil:local
+```
+
+Open `http://localhost:8000/` for the landing page, `http://localhost:8000/dashboard` for the operations terminal, or `http://localhost:8000/docs` for the API documentation. `PORT` defaults to `8000` and can be overridden by the deployment environment.
+
+### 4. Run the test suite
+
+The canonical test command is:
+
+```bash
+python -m pytest tests/ -v
+```
+
+For a local virtual environment using the pinned runtime:
+
+```bash
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install --requirement requirements.lock
+python -m pytest tests/ -v
+```
+
+### 5. Run the reproducible demo
+
+```bash
+make run-demo
+```
+
+This builds the Docker demo service and runs the narrated revenue-assurance scenarios. The production image deliberately does not contain the test suite; run tests from the clean checkout with the canonical command above.
